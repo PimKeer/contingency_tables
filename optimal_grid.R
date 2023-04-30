@@ -45,11 +45,13 @@ find_N <- function(n_row, col, N_benchmark = NULL){
   }
 }
 
-n_arr <- 3:20
+n_arr <- 3:5
 N_arr <- c()
 for(n in n_arr){
-  N_arr <- append(N_arr, find_N(c(n,n),2))
+  print(n)
+  N_arr <- append(N_arr, find_N(c(n,n,n), 2, 1000))
 }
 plot(n_arr, N_arr)
 
-# n_arr 3:20 yields 3  2  2  4  2 18 17 18 26 16 25 34 25 51 32 71 51 33
+# n_arr 3:20 row 2 col 2 yields 3  2  2  4  2 18 17 18 26 16 25 34 25 51 32 71 51 33
+
