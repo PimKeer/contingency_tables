@@ -1,3 +1,6 @@
+source("functions.R")
+library(microbenchmark)
+
 # TIME AS A FUNCTION OF SAMPLE SIZE
 
 mean_group_size <- function(n){
@@ -9,7 +12,8 @@ mean_group_size <- function(n){
   }
 }
 
-n_arr <- 1:150
+k_arr <- 1:30
+n_arr <- 5 * k_arr
 col <- 2
 
 t_table_arr <- c()
@@ -22,11 +26,11 @@ t_reduce_theoretical_arr<- c()
 for(n in n_arr){
   print(n)
   n_row <- c(n,n)
-  t1 <- Sys.time()
+  t_table_arr <- append(t_table_arr, mean(microbenchmark(gen_tables(n_row, col), times = 10)$time))
   tables <- gen_tables(n_row, col)
-  t2 <- Sys.time()
-  group_reduced <- group_reduce(tables, type = "sym")
-  t3 <- Sys.time()
+  t_reduce_arr <- append(t_reduce_arr, mean(microbenchmark(group_reduce(tables), times = 10)$time))
+  group_reduced <- group_reduce(tables)
+
 
   # order_array <- supremum_ordering(n_row,
   #                                  col,
@@ -42,8 +46,6 @@ for(n in n_arr){
   O <- table_amount(n_row, col)
   t_table_theoretical_arr <- append(t_table_theoretical_arr, O)
   t_reduce_theoretical_arr <- append(t_reduce_theoretical_arr, O ^ 2 / (2 * mean_group_size(n)) + O / 2)
-  t_table_arr <- append(t_table_arr, as.numeric(t2 - t1, units="secs"))
-  t_reduce_arr <- append(t_reduce_arr, as.numeric(t3 - t2, units="secs"))
   # t_test_arr <- append(t_test_arr, as.numeric(t4 - t3, units="secs"))
 }
 
@@ -52,10 +54,10 @@ for(n in n_arr){
   O <- table_amount(c(n,n), col)
   t_reduce_old_theoretical_arr <- append(t_reduce_old_theoretical_arr, O ^ 2 / 8 + O / 2)
 }
-reduce_old_normaliser <- t_reduce_arr[100] / t_reduce_old_theoretical_arr[100]
+reduce_old_normaliser <- t_reduce_arr[length(n_arr)] / t_reduce_old_theoretical_arr[length(n_arr)]
 
 table_normaliser <- t_table_arr[length(n_arr)] / t_table_theoretical_arr[length(n_arr)]
-reduce_normaliser <- t_reduce_arr[100] / t_reduce_theoretical_arr[100]
+reduce_normaliser <- t_reduce_arr[length(n_arr)] / t_reduce_theoretical_arr[length(n_arr)]
 
 par(mfrow = c(2,2))
 
@@ -63,13 +65,16 @@ plot(n_arr, log(t_table_arr/t_table_theoretical_arr))
 
 plot(n_arr, t_table_arr)
 lines(n_arr, t_table_theoretical_arr * table_normaliser)
+table_fit <- lm(t_table_arr ~ poly(n_arr, 2))
+lines(n_arr, table_fit$fitted.values)
 
 plot(n_arr, log(t_reduce_arr/t_reduce_theoretical_arr))
 
 plot(n_arr, t_reduce_arr)
 lines(n_arr, t_reduce_theoretical_arr * reduce_normaliser)
 lines(n_arr, t_reduce_old_theoretical_arr * reduce_old_normaliser)
-
+reduce_fit <- lm(t_reduce_arr ~ poly(n_arr, 2))
+lines(n_arr, reduce_fit$fitted.values)
 
 plot(n_arr, t_table_arr)
 plot(n_arr, t_reduce_arr)
