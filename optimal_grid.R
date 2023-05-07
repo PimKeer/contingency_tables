@@ -1,5 +1,7 @@
 source("functions.R")
 
+## Table find_N
+
 find_N <- function(n_row, col, type, N_benchmark = NULL){
   if(is.null(N_benchmark)){
     N_benchmark <- 4 * max(n_row)
@@ -111,14 +113,52 @@ find_N_lp <- function(n_row, col, alpha = 0.05, N_benchmark = 1000){
   }
 }
 
-k_arr <- 7:10
+k_arr <- 1:10
 n_arr <- 5 * k_arr
 N_arr <- c()
 for(n in n_arr){
   print(n)
-  N_arr <- append(N_arr, find_N(c(n,n), 2, "sym", 1000))
+  N_arr <- append(N_arr, find_N(c(n,n,n), 2, "sym", 1000))
 }
 plot(n_arr, N_arr)
 
 # n_arr 3:20 row 2 col 2 yields 3  2  2  4  2 18 17 18 26 16 25 34 25 51 32 71 51 33
 
+## Example too small grid
+
+alpha_arr <- c(0.01,0.05)
+n_list <- list(c(20,20))
+theta_list <- list(c(0.1,0.9),c(0.2,0.8),c(0.3,0.7),c(0.4,0.6),c(0.5,0.5))
+N_list <- c(10,50,100,150,200,250,500)
+test <- "chisq"
+rows <- length(n_list[[1]])
+cols <- length(theta_list[[1]])
+t1 <- Sys.time()
+comparison <- compare_powers_N(alpha_arr, n_list, theta_list, N_list, test)
+t2 <- Sys.time()
+print(t2-t1)
+power_df <- comparison[[1]]
+size_rows <- comparison[[2]]
+t_list <- comparison[[3]]
+print(t_list)
+
+df_name <- paste("power_comparison_", 
+                 format(Sys.time(), "%d-%m_%H-%M"), 
+                 ".xlsx", 
+                 sep="")
+library(openxlsx)
+wb <- createWorkbook()
+addWorksheet(wb, "sheet1")
+writeData(wb, "sheet1", power_df)
+for(i in 2:(nrow(power_df)+1)){
+  conditionalFormatting(wb, "sheet1", 
+                        cols = (2+rows+rows*cols):ncol(power_df), 
+                        rows = i, type = "topN", rank = 1)
+}
+sizeStyle <- createStyle(fgFill = "yellow")
+addStyle(wb, "sheet1", cols = (2+rows):(2+rows+rows*cols-1), rows = 1+size_rows,
+         style = sizeStyle, gridExpand = TRUE)
+saveWorkbook(wb, df_name, TRUE)
+
+# chisq t: [1] 0.2886779 0.3455278 0.4361007 0.5131486 0.5902837 0.6885240 1.1148664 0.3626806 0.4932459 0.5994688 0.7022640
+#         [12] 0.8514636 0.9751749 1.5979906
