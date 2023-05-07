@@ -111,7 +111,7 @@ find_N_lp <- function(n_row, col, alpha = 0.05, N_benchmark = 1000){
   }
 }
 
-k_arr <- 1:10
+k_arr <- 7:10
 n_arr <- 5 * k_arr
 N_arr <- c()
 for(n in n_arr){
