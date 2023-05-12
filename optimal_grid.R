@@ -52,7 +52,7 @@ find_N <- function(n_row, col, type, N_benchmark = NULL){
   }
 }
 
-find_N_lp <- function(n_row, col, alpha = 0.05, N_benchmark = 1000){
+find_N_lp <- function(n_row, col, type, N_benchmark = 1000, alpha = 0.05){
   if(is.null(N_benchmark)){
     N_benchmark <- 4 * max(n_row)
   }
@@ -61,19 +61,19 @@ find_N_lp <- function(n_row, col, alpha = 0.05, N_benchmark = 1000){
   group_reduced <- group_reduce(tables)
   
   K_benchmark <- lp_solver(n_row, 
-                            col,
-                            alpha,
-                            N = N_benchmark,
-                            type = "sym",
-                            pre_tables = tables,
-                            pre_group_reduced = group_reduced,
-                            pre_A = NULL,
-                            solver = "gurobi",
-                            auxiliary = FALSE,
-                            group_length_coefficients = TRUE,
-                            scaling = TRUE,
-                            show_progress = TRUE)[[1]]
-
+                           col,
+                           alpha,
+                           N = N_benchmark,
+                           type = type,
+                           pre_tables = tables,
+                           pre_group_reduced = group_reduced,
+                           pre_A = NULL,
+                           solver = "gurobi",
+                           auxiliary = FALSE,
+                           group_length_coefficients = TRUE,
+                           scaling = TRUE,
+                           show_progress = TRUE)[[1]]
+  
   print(K_benchmark)
   N_old <- N_benchmark
   N_new <- round(N_benchmark / 2)
@@ -83,18 +83,18 @@ find_N_lp <- function(n_row, col, alpha = 0.05, N_benchmark = 1000){
     print(N_new)
     N_old <- N_new
     K_new <- lp_solver(n_row, 
-                             col,
-                             alpha,
-                             N = N_new,
-                             type = "sym",
-                             pre_tables = tables,
-                             pre_group_reduced = group_reduced,
-                             pre_A = NULL,
-                             solver = "gurobi",
-                             auxiliary = FALSE,
-                             group_length_coefficients = TRUE,
-                             scaling = TRUE,
-                             show_progress = TRUE)[[1]]
+                       col,
+                       alpha,
+                       N = N_new,
+                       type = type,
+                       pre_tables = tables,
+                       pre_group_reduced = group_reduced,
+                       pre_A = NULL,
+                       solver = "gurobi",
+                       auxiliary = FALSE,
+                       group_length_coefficients = TRUE,
+                       scaling = TRUE,
+                       show_progress = TRUE)[[1]]
     print(K_new)
     
     if(order_diff(K_benchmark, K_new) == 0){
@@ -113,16 +113,19 @@ find_N_lp <- function(n_row, col, alpha = 0.05, N_benchmark = 1000){
   }
 }
 
+
 k_arr <- 1:10
 n_arr <- 5 * k_arr
 N_arr <- c()
 for(n in n_arr){
   print(n)
-  N_arr <- append(N_arr, find_N(c(n,n,n), 2, "sym", 1000))
+  N_arr <- append(N_arr, find_N_lp(c(n,n), 2, "sym", 1000))
 }
 plot(n_arr, N_arr)
 
 # n_arr 3:20 row 2 col 2 yields 3  2  2  4  2 18 17 18 26 16 25 34 25 51 32 71 51 33
+
+# LP k_arr 1:8 row 2 col 2 yields [1]    2    5   29   26  791 1000   10  874
 
 ## Example too small grid
 

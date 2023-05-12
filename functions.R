@@ -1805,13 +1805,16 @@ test_power <- function(theta, alpha, tables, p_arr){
   return(summation)
 }
 
-power_matrix <- function(alpha, tables, p_arr, res = 100){
+power_matrix <- function(alpha, tables, p_arr, res = 100, show_progress = FALSE){
   power_mat <- matrix(0, res + 1, res + 1)
   theta_seq <- seq(0, 1, length.out = res + 1)
   K <- tables[[1]][p_arr <= alpha & p_arr > 0]
   if(length(K) > 0){
-    for(i in 1:res){
-      for(j in 1:res){
+    for(i in 1:(res+1)){
+      if(show_progress){
+        print(i)
+      }
+      for(j in 1:(res+1)){
         theta <- list(c(theta_seq[i], 1 - theta_seq[i]), c(theta_seq[j], 1 - theta_seq[j]))
         summation <- 0
         for(table in K){
@@ -1825,46 +1828,36 @@ power_matrix <- function(alpha, tables, p_arr, res = 100){
 }
 
 library(plot.matrix)
-plot_power_matrix <- function(power_mat){
-  # res <- nrow(power_mat) - 1
-  # mat_names <- rep("", res + 1)
-  # for(k in 0:10){
-  #   mat_names[1 + k * res / 10] <- 0.1 * k
-  # }
-  # print(mat_names)
-  # colnames(power_mat) <- mat_names
-  # rownames(power_mat) <- mat_names
+library(viridis)
+plot_power_matrix <- function(power_mat, negative = FALSE){
+  res <- nrow(power_mat) - 1
+  power_mat <- power_mat[(res + 1):1, ]
+  if(negative){
+    brk <- seq(min(power_mat), max(power_mat), length.out = 12)
+    keys <- list(side = 4, las = 1)
+  }
+  else{
+    brk <- c(0,0.01,0.05,seq(0.1,1,1/10))
+    keys <- list(at = seq(0, 1, 0.1), labels = seq(0, 1, 0.1))
+  }
+  par(mar = c(2,2,2,4))
   plot(power_mat,
-       breaks = 10,
        border = NA,
-       asp = TRUE,
+       breaks = brk,
+       # asp = TRUE,
        axis.row = NULL,
        axis.col = NULL,
+       spacing.key = c(1+res/10,res/10,0),
+       fmt.key="%.2f",
+       key = keys,
        xlab = "",
        ylab = "",
-       xaxt = "n",
-       mgp = c(0,0,10))
-  axis(1, at = seq(1, 100, length.out = 11), labels = seq(0, 1, 0.1), pos = 0)
-  axis(2, at = seq(1, 100, length.out = 11), labels = seq(0, 1, 0.1), outer = TRUE)
+       main = "",
+       col = viridis)
+  axis(1, at = seq(1, res + 1, length.out = 11), labels = seq(0, 1, 0.1))
+  axis(2, at = seq(1, res + 1, length.out = 11), labels = seq(0, 1, 0.1))
+  lines(seq(1, res + 1, length.out = 11),seq(1, res + 1, length.out = 11))
 }
-
-alpha <- 0.01
-n_row <- c(5,5)
-col <- 2
-tables <- gen_tables(n_row, col)
-p_arr <- supremum_ordering(n_row, 
-                           col, 
-                           level = alpha,
-                           type = "sym", 
-                           convex = TRUE, 
-                           N_order = 10,
-                           N_find = 100,
-                           pre_tables = tables,
-                           pre_group_reduced = NULL,
-                           show_progress = TRUE,
-                           until_table = NULL)[[2]]
-power_mat <- power_matrix(alpha, tables, p_arr, res = 5)
-plot_power_matrix(power_mat)
 
 plot_size <- function(alpha, n, test_list, Delta=0.01){
   col <- 2
