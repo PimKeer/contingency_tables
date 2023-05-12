@@ -8,7 +8,8 @@ for(n in n_arr){
 }
 theta_list <- list(c(0.1,0.9),c(0.2,0.8),c(0.3,0.7),c(0.4,0.6),c(0.5,0.5))
 test_list <- list("asymp", 
-                  "fisher", 
+                  "fisher",
+                  "boschloo",
                   "sym", 
                   "chisq", 
                   "ss", 

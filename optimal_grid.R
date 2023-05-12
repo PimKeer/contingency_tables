@@ -113,13 +113,12 @@ find_N_lp <- function(n_row, col, type, N_benchmark = 1000, alpha = 0.05){
   }
 }
 
-
-k_arr <- 1:10
+k_arr <- 1:6
 n_arr <- 5 * k_arr
 N_arr <- c()
 for(n in n_arr){
   print(n)
-  N_arr <- append(N_arr, find_N_lp(c(n,n), 2, "sym", 1000))
+  N_arr <- append(N_arr, find_N(c(n,n,n), 3, "sym", 1000))
 }
 plot(n_arr, N_arr)
 
@@ -133,7 +132,7 @@ alpha_arr <- c(0.01,0.05)
 n_list <- list(c(20,20))
 theta_list <- list(c(0.1,0.9),c(0.2,0.8),c(0.3,0.7),c(0.4,0.6),c(0.5,0.5))
 N_list <- c(10,50,100,150,200,250,500)
-test <- "chisq"
+test <- "sym"
 rows <- length(n_list[[1]])
 cols <- length(theta_list[[1]])
 t1 <- Sys.time()
