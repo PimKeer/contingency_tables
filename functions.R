@@ -325,11 +325,9 @@ group_reduce <- function(tables, type = "sym", chisq_tol = 6, vol_tol = 6, fishe
     for(i in 1:len){
       fisher_arr[i] <- fisher.test(tables[[i]])$p.value
     }
-    print(fisher_arr)
     rounded_fisher_arr <- round(fisher_arr, fisher_tol)
     sorted_unique_rounded_fisher_arr <- sort(unique(rounded_fisher_arr), FALSE)
     unique_len <- length(sorted_unique_rounded_fisher_arr)
-    print(sorted_unique_rounded_fisher_arr)
     for(i in 1:unique_len){
       val <- sorted_unique_rounded_fisher_arr[i]
       val_tables <- tables[where_equal(rounded_fisher_arr, val)]
@@ -490,7 +488,6 @@ group_reduce <- function(tables, type = "sym", chisq_tol = 6, vol_tol = 6, fishe
               reduced_numbers, 
               numbers_list))
 }
-group_reduce(gen_tables(c(5,5),2), "boschloo")
 
 library(gtools)
 neighbours <- function(table){
