@@ -60,6 +60,24 @@ find_N_lp <- function(n_row, col, type, N_benchmark = 1000, alpha = 0.05){
   tables <- gen_tables(n_row, col)
   group_reduced <- group_reduce(tables)
   
+  group_lengths <- group_reduced[[2]]
+  fellows <- group_reduced[[3]]
+  len <- length(group_lengths)
+  
+  theta_grid <- make_grid_qmc(col, N_benchmark)
+  N_actual <- nrow(theta_grid)
+  pre_A <- matrix(0, N_actual, len)
+  for(i in 1:N_actual){
+    theta <- theta_grid[i, ]
+    for(j in 1:len){
+      summation <- 0
+      for(fellow in fellows[[j]]){
+        summation <- summation + P(theta, fellow)
+      }
+      pre_A[i, j] <- summation
+    }
+  }
+  
   K_benchmark <- lp_solver(n_row, 
                            col,
                            alpha,
@@ -67,7 +85,7 @@ find_N_lp <- function(n_row, col, type, N_benchmark = 1000, alpha = 0.05){
                            type = type,
                            pre_tables = tables,
                            pre_group_reduced = group_reduced,
-                           pre_A = NULL,
+                           pre_A = pre_A,
                            solver = "gurobi",
                            auxiliary = FALSE,
                            group_length_coefficients = TRUE,
@@ -89,7 +107,7 @@ find_N_lp <- function(n_row, col, type, N_benchmark = 1000, alpha = 0.05){
                        type = type,
                        pre_tables = tables,
                        pre_group_reduced = group_reduced,
-                       pre_A = NULL,
+                       pre_A = pre_A[c(1:N_new, (N_benchmark + 1):N_actual), ],
                        solver = "gurobi",
                        auxiliary = FALSE,
                        group_length_coefficients = TRUE,
@@ -118,7 +136,7 @@ n_arr <- 5 * k_arr
 N_arr <- c()
 for(n in n_arr){
   print(n)
-  N_arr <- append(N_arr, find_N(c(n,n,n), 3, "sym", 1000))
+  N_arr <- append(N_arr, find_N_lp(c(n,n,n), 3, "sym", 1000))
 }
 plot(n_arr, N_arr)
 
