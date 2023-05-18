@@ -1005,7 +1005,8 @@ lp_solver <- function(n_row,
   else{
     group_reduced <- pre_group_reduced
   }
-
+  
+  reps <- group_reduced[[1]]
   group_lengths <- group_reduced[[2]]
   fellows <- group_reduced[[3]]
   actual_indices <- group_reduced[[4]]
@@ -1016,14 +1017,48 @@ lp_solver <- function(n_row,
     N <- nrow(theta_grid)
     t4 <- Sys.time()
     A <- matrix(0, N, len)
-    for(i in 1:N){
-      theta <- theta_grid[i, ]
+    if(type == "sym"){
+      # A <- matrix(0, N, len)
+      # for(i in 1:N){
+      #   theta <- theta_grid[i, ]
+      #   for(j in 1:len){
+      #     summation <- 0
+      #     for(fellow in fellows[[j]]){
+      #       summation <- summation + P(theta, fellow)
+      #     }
+      #     A[i, j] <- summation
+      #   }
+      # }
       for(j in 1:len){
-        summation <- 0
-        for(fellow in fellows[[j]]){
-          summation <- summation + P(theta, fellow)
+        subfellows <- fellows[[j]]
+        slen <- group_lengths[[j]]
+        exp_mat <- matrix(0, slen, col)
+        for(k in 1:slen){
+          exp_mat[k, ] <- margins(subfellows[[k]], 2)
         }
-        A[i, j] <- summation
+        K <- prod(factorial(n_row)) / prod(factorial(reps[[j]]))
+        for(i in 1:N){
+          theta <- theta_grid[i, ]
+          eval_mat <- theta ^ t(exp_mat)
+          A[i, j] <- K * sum(apply(eval_mat, 2, prod))
+        }
+      }
+    } 
+    else{
+      for(j in 1:len){
+        subfellows <- fellows[[j]]
+        slen <- group_lengths[[j]]
+        exp_mat <- matrix(0, slen, col)
+        K_arr <- rep(0, slen)
+        for(k in 1:slen){
+          exp_mat[k, ] <- margins(subfellows[[k]], 2)
+          K_arr[k] <- prod(factorial(n_row)) / prod(factorial(subfellows[[k]]))
+        }
+        for(i in 1:N){
+          theta <- theta_grid[i, ]
+          eval_mat <- theta ^ t(exp_mat)
+          A[i, j] <- sum(K_arr * apply(eval_mat, 2, prod))
+        }
       }
     }
     t5 <- Sys.time()
@@ -1033,7 +1068,12 @@ lp_solver <- function(n_row,
     }
   }
   else{
-    A <- pre_A
+    if(is.matrix(pre_A)){
+      A <- pre_A
+    }
+    else{
+      A <- t(as.matrix(pre_A))
+    }
     N <- nrow(A)
     t5 <- Sys.time()
   }
@@ -1068,10 +1108,27 @@ lp_solver <- function(n_row,
       model$obj <- rep(1, len)
     }
 
-    params <- list(OutputFlag=0)
+    params <- list(OutputFlag=1, 
+                   PoolSearchMode = 2,
+                   PoolSolutions = n_row[1])
+    
+    sol <- gurobi(model, params)
+    lensolpool <- length(sol$pool)
+    if(lensolpool > 1){
+      max_arr <- rep(0, lensolpool)
+      obj_arr <- rep(0, lensolpool)
+      for(i in 1:lensolpool){
+        max_arr[i] <- max(A %*% sol$pool[[i]]$xn)
+        obj_arr[i] <- sum(group_lengths * sol$pool[[i]]$xn)
+      }
+      w <- sol$pool[[which.max(max_arr[round(obj_arr) == round(max(obj_arr))])]]$xn
+      print(A %*% w)
+    }
+    else{
+      w <- sol$x
+    }
 
     # w <- gurobi(model)$x
-    w <- gurobi(model, params)$x
   }
   t6 <- Sys.time()
   t_list <- append(t_list, as.numeric(t6-t5, units="mins"))
@@ -1080,12 +1137,12 @@ lp_solver <- function(n_row,
   }
 
   if(auxiliary){
-    return(list(w, A))
+    return(list(round(w), A))
   }
   else{
     K <- rep(0, length(tabnum[[1]]))
     for(j in 1:len){
-      K[actual_indices[[j]]] <- w[j]
+      K[actual_indices[[j]]] <- round(w[j])
     }
     return(list(K, t_list))
   }
@@ -1133,6 +1190,7 @@ lp_solver_2 <- function(n_row,
     group_reduced <- pre_group_reduced
   }
 
+  reps <- group_reduced[[1]]
   group_lengths <- group_reduced[[2]]
   fellows <- group_reduced[[3]]
   actual_indices <- group_reduced[[4]]
@@ -1147,14 +1205,37 @@ lp_solver_2 <- function(n_row,
     print(theta_grid)
     t4 <- Sys.time()
     A <- matrix(0, N, len)
-    for(i in 1:N){
-      theta <- theta_grid[i, ]
+    if(type == "sym"){
       for(j in 1:len){
-        summation <- 0
-        for(fellow in fellows[[j]]){
-          summation <- summation + P(theta, fellow)
+        subfellows <- fellows[[j]]
+        slen <- group_lengths[[j]]
+        exp_mat <- matrix(0, slen, col)
+        for(k in 1:slen){
+          exp_mat[k, ] <- margins(subfellows[[k]], 2)
         }
-        A[i, j] <- summation
+        K <- prod(factorial(n_row)) / prod(factorial(reps[[j]]))
+        for(i in 1:N){
+          theta <- theta_grid[i, ]
+          eval_mat <- theta ^ t(exp_mat)
+          A[i, j] <- K * sum(apply(eval_mat, 2, prod))
+        }
+      }
+    } 
+    else{
+      for(j in 1:len){
+        subfellows <- fellows[[j]]
+        slen <- group_lengths[[j]]
+        exp_mat <- matrix(0, slen, col)
+        K_arr <- rep(0, slen)
+        for(k in 1:slen){
+          exp_mat[k, ] <- margins(subfellows[[k]], 2)
+          K_arr[k] <- prod(factorial(n_row)) / prod(factorial(subfellows[[k]]))
+        }
+        for(i in 1:N){
+          theta <- theta_grid[i, ]
+          eval_mat <- theta ^ t(exp_mat)
+          A[i, j] <- sum(K_arr * apply(eval_mat, 2, prod))
+        }
       }
     }
     t5 <- Sys.time()
@@ -1164,7 +1245,14 @@ lp_solver_2 <- function(n_row,
     }
   }
   else{
-    A <- pre_A
+    if(is.matrix(pre_A)){
+      A <- pre_A
+    }
+    else{
+      A <- t(as.matrix(pre_A))
+    }
+    N <- nrow(A)
+    t5 <- Sys.time()
   }
   Amax <- max(A)
 
@@ -1265,11 +1353,13 @@ lp_solver_3 <- function(n_row,
     t_list <- append(t_list, as.numeric(t3-t2b, units="mins"))
     if(show_progress){
       print(t3-t2)
-    }  }
+    }  
+  }
   else{
     group_reduced <- pre_group_reduced
   }
 
+  reps <- group_reduced[[1]]
   group_lengths <- group_reduced[[2]]
   fellows <- group_reduced[[3]]
   actual_indices <- group_reduced[[4]]
@@ -1279,14 +1369,38 @@ lp_solver_3 <- function(n_row,
     theta_grid <- make_grid_qmc(col, N)
     t4 <- Sys.time()
     A <- matrix(0, N, len)
-    for(i in 1:N){
-      theta <- theta_grid[i, ]
+    A <- matrix(0, N, len)
+    if(type == "sym"){
       for(j in 1:len){
-        summation <- 0
-        for(fellow in fellows[[j]]){
-          summation <- summation + P(theta, fellow)
+        subfellows <- fellows[[j]]
+        slen <- group_lengths[[j]]
+        exp_mat <- matrix(0, slen, col)
+        for(k in 1:slen){
+          exp_mat[k, ] <- margins(subfellows[[k]], 2)
         }
-        A[i, j] <- summation
+        K <- prod(factorial(n_row)) / prod(factorial(reps[[j]]))
+        for(i in 1:N){
+          theta <- theta_grid[i, ]
+          eval_mat <- theta ^ t(exp_mat)
+          A[i, j] <- K * sum(apply(eval_mat, 2, prod))
+        }
+      }
+    } 
+    else{
+      for(j in 1:len){
+        subfellows <- fellows[[j]]
+        slen <- group_lengths[[j]]
+        exp_mat <- matrix(0, slen, col)
+        K_arr <- rep(0, slen)
+        for(k in 1:slen){
+          exp_mat[k, ] <- margins(subfellows[[k]], 2)
+          K_arr[k] <- prod(factorial(n_row)) / prod(factorial(subfellows[[k]]))
+        }
+        for(i in 1:N){
+          theta <- theta_grid[i, ]
+          eval_mat <- theta ^ t(exp_mat)
+          A[i, j] <- sum(K_arr * apply(eval_mat, 2, prod))
+        }
       }
     }
     t5 <- Sys.time()
@@ -1296,7 +1410,14 @@ lp_solver_3 <- function(n_row,
     }
   }
   else{
-    A <- pre_A
+    if(is.matrix(pre_A)){
+      A <- pre_A
+    }
+    else{
+      A <- t(as.matrix(pre_A))
+    }
+    N <- nrow(A)
+    t5 <- Sys.time()
   }
   Amax <- max(A)
 
@@ -1865,19 +1986,28 @@ power_matrix <- function(alpha, tables, p_arr, res = 100, show_progress = FALSE)
   power_mat <- matrix(0, res + 1, res + 1)
   theta_seq <- seq(0, 1, length.out = res + 1)
   K <- tables[[1]][p_arr <= alpha & p_arr > 0]
+  lenK <- length(K)
   
-  if(length(K) > 0){
+  n_row <- margins(tables[[1]][[1]], 1)
+  rows <- length(n_row)
+  col <- ncol(tables[[1]][[1]])
+  print(col)
+  
+  exp_mat <- matrix(0, lenK, rows * col)
+  K_arr <- rep(0, lenK)
+  if(lenK > 0){
+    for(k in 1:lenK){
+      exp_mat[k, ] <- c(t(K[[k]]))
+      K_arr[k] <- prod(factorial(n_row)) / prod(factorial(K[[k]]))
+    }
     for(i in 1:(res+1)){
       if(show_progress){
         print(i)
       }
       for(j in 1:(res+1)){
-        theta <- list(c(theta_seq[i], 1 - theta_seq[i]), c(theta_seq[j], 1 - theta_seq[j]))
-        summation <- 0
-        for(table in K){
-          summation <- summation + P(theta, table)
-        }
-        power_mat[i, j] <- summation
+        theta <- c(theta_seq[i], 1 - theta_seq[i], theta_seq[j], 1 - theta_seq[j])
+        eval_mat <- theta ^ t(exp_mat)
+        power_mat[i, j] <- sum(K_arr * apply(eval_mat, 2, prod))
       }
     }
   }
@@ -2051,8 +2181,7 @@ plot_size <- function(alpha, n, test_list, Delta=0.01){
 compare_powers <- function(alpha_arr, 
                            n_list, 
                            theta_list, 
-                           test_list,
-                           theta_explicit = FALSE){
+                           test_list){
   power_df <- data.frame()
   power_df["alpha"] <- numeric()
   
@@ -2073,37 +2202,32 @@ compare_powers <- function(alpha_arr,
   for(test in test_list){
     power_df[test] <- numeric()
   }
-  
-  if(theta_explicit){
-    
+
+  list_list <- list()
+  for(i in 1:rows){
+    list_list <- append(list_list, list(theta_list))
   }
-  else{
-    list_list <- list()
-    for(i in 1:rows){
-      list_list <- append(list_list, list(theta_list))
+  expanded_theta_matrix <- expand.grid(list_list)
+  expanded_theta_list <- list()
+  expanded_length <- nrow(expanded_theta_matrix)
+  for(i in 1:expanded_length){
+    sub_list <- list()
+    for(j in 1:rows){
+      sub_list <- append(sub_list, expanded_theta_matrix[i, ][[j]])
     }
-    expanded_theta_matrix <- expand.grid(list_list)
-    expanded_theta_list <- list()
-    expanded_length <- nrow(expanded_theta_matrix)
-    for(i in 1:expanded_length){
-      sub_list <- list()
-      for(j in 1:rows){
-        sub_list <- append(sub_list, expanded_theta_matrix[i, ][[j]])
+    expanded_theta_list <- append(expanded_theta_list, list(sub_list))
+  }
+  print(expanded_length)
+  size_rows <- c()
+  for(i in 1:expanded_length){
+    counter <- 0
+    for(j in 1:rows){
+      if(all(expanded_theta_list[[i]][[j]] == expanded_theta_list[[i]][[1]])){
+        counter <- counter + 1
       }
-      expanded_theta_list <- append(expanded_theta_list, list(sub_list))
     }
-    print(expanded_length)
-    size_rows <- c()
-    for(i in 1:expanded_length){
-      counter <- 0
-      for(j in 1:rows){
-        if(all(expanded_theta_list[[i]][[j]] == expanded_theta_list[[i]][[1]])){
-          counter <- counter + 1
-        }
-      }
-      if(counter == rows){
-        size_rows <- append(size_rows, i)
-      }
+    if(counter == rows){
+      size_rows <- append(size_rows, i)
     }
   }
   

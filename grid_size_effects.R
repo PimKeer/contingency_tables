@@ -11,60 +11,60 @@ group_reduced <- group_reduce(tables, type)
 
 N_arr <- c(1,3,5,7,9,50) #,6,7,8,9,10,20,30,40,50,75,100,150,200)
 
-# p_arr_benchmark <- supremum_ordering(n_row,
-#                                      col,
-#                                      level = 1,
-#                                      type = type,
-#                                      convex = TRUE,
-#                                      N_order = N_benchmark,
-#                                      N_find = N_benchmark,
-#                                      pre_tables = tables,
-#                                      pre_group_reduced = group_reduced,
-#                                      show_progress = TRUE,
-#                                      until_table = NULL)[[2]]
-p_arr_benchmark <- lp_solver(n_row,
-                             col,
-                             alpha,
-                             N = N_benchmark,
-                             type = type,
-                             pre_tables = tables,
-                             pre_group_reduced = group_reduced)[[1]] * alpha / 2
+p_arr_benchmark <- supremum_ordering(n_row,
+                                     col,
+                                     level = 1,
+                                     type = type,
+                                     convex = TRUE,
+                                     N_order = N_benchmark,
+                                     N_find = N_benchmark,
+                                     pre_tables = tables,
+                                     pre_group_reduced = group_reduced,
+                                     show_progress = TRUE,
+                                     until_table = NULL)[[2]]
+# p_arr_benchmark <- lp_solver(n_row,
+#                              col,
+#                              alpha,
+#                              N = N_benchmark,
+#                              type = type,
+#                              pre_tables = tables,
+#                              pre_group_reduced = group_reduced)[[1]] * alpha / 2
 power_mat_benchmark <- power_matrix(alpha, tables, p_arr_benchmark, res, TRUE)
-png("benchmark_both_N_lp_sym.png", width = 466, height = 351)
-plot_power_matrix(power_mat_benchmark, FALSE)
-dev.off()
+# png("grid_size_effects_lp_", width = 466, height = 351)
+# plot_power_matrix(power_mat_benchmark, FALSE)
+# dev.off()
 
 p_arr_list <- list()
 
 for(N in N_arr){
-#   p_arr <- supremum_ordering(n_row,
-#                              col,
-#                              level = 1,
-#                              type = type,
-#                              convex = TRUE,
-#                              N_order = N,
-#                              N_find = N,
-#                              pre_tables = tables,
-#                              pre_group_reduced = group_reduced,
-#                              show_progress = TRUE,
-#                              until_table = NULL)[[2]]
-  p_arr <- lp_solver(n_row,
-                     col,
-                     alpha,
-                     N = N,
-                     type = type,
-                     pre_tables = tables,
-                     pre_group_reduced = group_reduced)[[1]] * alpha / 2
+  p_arr <- supremum_ordering(n_row,
+                             col,
+                             level = 1,
+                             type = type,
+                             convex = TRUE,
+                             N_order = N,
+                             N_find = N_benchmark,
+                             pre_tables = tables,
+                             pre_group_reduced = group_reduced,
+                             show_progress = TRUE,
+                             until_table = NULL)[[2]]
+  # p_arr <- lp_solver(n_row,
+  #                    col,
+  #                    alpha,
+  #                    N = N,
+  #                    type = type,
+  #                    pre_tables = tables,
+  #                    pre_group_reduced = group_reduced)[[1]] * alpha / 2
   p_arr_list <- append(p_arr_list, list(p_arr))
-  power_mat <- power_matrix(alpha, tables, p_arr, res, TRUE)
+  power_mat <- power_matrix(alpha, tables, p_arr, res, FALSE)
   
-  png(paste(N,"_both_N_lp_sym.png", sep = ""), width = 466, height = 351)
-  plot_power_matrix(power_mat, FALSE)
-  dev.off()
-  
-  png(paste(N,"_both_N_diff_lp_sym.png", sep = ""), width = 466, height = 351)
-  plot_power_matrix(power_mat - power_mat_benchmark, TRUE)
-  dev.off()
+  # png(paste("grid_size_effects_lp_", N, ".png", sep = ""), width = 466, height = 351)
+  # plot_power_matrix(power_mat, FALSE)
+  # dev.off()
+  # 
+  # png(paste("grid_size_effects_lp_", N, "_diff.png", sep = ""), width = 466, height = 351)
+  # plot_power_matrix(power_mat - power_mat_benchmark, TRUE)
+  # dev.off()
 }
 
 Delta <- 0.01

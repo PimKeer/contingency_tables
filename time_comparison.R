@@ -1,11 +1,10 @@
 source("functions.R")
 library(microbenchmark)
 
-k_arr <- 1:5
+k_arr <- 5:5
 n_arr <- 5 * k_arr
 col <- 2
-test_list <- list("ss",
-                  "vol_ext")
+test_list <- list("vol_ext")
 
 t_list_list <- list()
 len_list <- list()

@@ -33,7 +33,7 @@ find_N <- function(n_row, col, type, N_benchmark = NULL){
                                    N_find = N_new, 
                                    pre_tables = tables,
                                    pre_group_reduced = group_reduced,
-                                   show_progress = FALSE)[[1]]
+                                   show_progress = TRUE)[[1]]
     print(order_new)
     
     if(order_diff(order_benchmark, order_new) == 0){
@@ -60,21 +60,46 @@ find_N_lp <- function(n_row, col, type, N_benchmark = 1000, alpha = 0.05){
   tables <- gen_tables(n_row, col)
   group_reduced <- group_reduce(tables)
   
+  reps <- group_reduced[[1]]
   group_lengths <- group_reduced[[2]]
   fellows <- group_reduced[[3]]
+  actual_indices <- group_reduced[[4]]
   len <- length(group_lengths)
   
   theta_grid <- make_grid_qmc(col, N_benchmark)
   N_actual <- nrow(theta_grid)
   pre_A <- matrix(0, N_actual, len)
-  for(i in 1:N_actual){
-    theta <- theta_grid[i, ]
+  if(type == "sym"){
     for(j in 1:len){
-      summation <- 0
-      for(fellow in fellows[[j]]){
-        summation <- summation + P(theta, fellow)
+      subfellows <- fellows[[j]]
+      slen <- group_lengths[[j]]
+      exp_mat <- matrix(0, slen, col)
+      for(k in 1:slen){
+        exp_mat[k, ] <- margins(subfellows[[k]], 2)
       }
-      pre_A[i, j] <- summation
+      K <- prod(factorial(n_row)) / prod(factorial(reps[[j]]))
+      for(i in 1:N_actual){
+        theta <- theta_grid[i, ]
+        eval_mat <- theta ^ t(exp_mat)
+        pre_A[i, j] <- K * sum(apply(eval_mat, 2, prod))
+      }
+    }
+  } 
+  else{
+    for(j in 1:len){
+      subfellows <- fellows[[j]]
+      slen <- group_lengths[[j]]
+      exp_mat <- matrix(0, slen, col)
+      K_arr <- rep(0, slen)
+      for(k in 1:slen){
+        exp_mat[k, ] <- margins(subfellows[[k]], 2)
+        K_arr[k] <- prod(factorial(n_row)) / prod(factorial(subfellows[[k]]))
+      }
+      for(i in 1:N_actual){
+        theta <- theta_grid[i, ]
+        eval_mat <- theta ^ t(exp_mat)
+        pre_A[i, j] <- sum(K_arr * apply(eval_mat, 2, prod))
+      }
     }
   }
   
@@ -92,7 +117,7 @@ find_N_lp <- function(n_row, col, type, N_benchmark = 1000, alpha = 0.05){
                            scaling = TRUE,
                            show_progress = TRUE)[[1]]
   
-  print(K_benchmark)
+  # print(K_benchmark)
   N_old <- N_benchmark
   N_new <- round(N_benchmark / 2)
   k <- 2
@@ -113,7 +138,8 @@ find_N_lp <- function(n_row, col, type, N_benchmark = 1000, alpha = 0.05){
                        group_length_coefficients = TRUE,
                        scaling = TRUE,
                        show_progress = TRUE)[[1]]
-    print(K_new)
+    print(sum(abs(K_new-K_benchmark)))
+    print(order_diff(K_benchmark, K_new) == 0)
     
     if(order_diff(K_benchmark, K_new) == 0){
       N_new <- round(N_new - N_benchmark / 2 ^ k)
@@ -136,7 +162,7 @@ n_arr <- 5 * k_arr
 N_arr <- c()
 for(n in n_arr){
   print(n)
-  N_arr <- append(N_arr, find_N_lp(c(n,n,n), 3, "sym", 1000))
+  N_arr <- append(N_arr, find_N_lp(c(n,n), 3, "sym", 1000))
 }
 plot(n_arr, N_arr)
 
