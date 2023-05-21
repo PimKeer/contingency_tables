@@ -71,6 +71,7 @@ find_N_lp <- function(n_row, col, type, N_benchmark = 1000, alpha = 0.05){
   pre_A <- matrix(0, N_actual, len)
   if(type == "sym"){
     for(j in 1:len){
+      print(j)
       subfellows <- fellows[[j]]
       slen <- group_lengths[[j]]
       exp_mat <- matrix(0, slen, col)
@@ -157,12 +158,12 @@ find_N_lp <- function(n_row, col, type, N_benchmark = 1000, alpha = 0.05){
   }
 }
 
-k_arr <- 1:6
+k_arr <- 4:6
 n_arr <- 5 * k_arr
 N_arr <- c()
 for(n in n_arr){
   print(n)
-  N_arr <- append(N_arr, find_N_lp(c(n,n), 3, "sym", 1000))
+  N_arr <- append(N_arr, find_N_lp(c(n,n), 3, "sym", 100))
 }
 plot(n_arr, N_arr)
 

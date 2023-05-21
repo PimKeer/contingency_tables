@@ -1,10 +1,12 @@
 source("functions.R")
 library(microbenchmark)
 
-k_arr <- 5:5
-n_arr <- 5 * k_arr
+k_arr <- 3:4
+n_arr <- 1 * k_arr
 col <- 2
-test_list <- list("vol_ext")
+test_list <- list("lp_1_sym",
+                  "lp_1_chisq",
+                  "lp_3_vol_classes")
 
 t_list_list <- list()
 len_list <- list()
@@ -46,6 +48,47 @@ for(type in test_list){
       }
       
       t_list <- append(t_list, list(t_arr))
+      len_arr <- append(len_arr, length(t_arr))
+    }
+  }
+  
+  else if(substr(type, 1, 2) == "lp"){
+    str_list <- strsplit(type, "_")[[1]]
+    if(length(str_list) == 3){
+      problem <- str_list[2]
+      test <- str_list[3]
+    }
+    else if(length(str_list) == 4){
+      problem <- str_list[2]
+      test <- paste(str_list[3], "_", str_list[4], sep = "")
+    }
+    for(n in n_arr){
+      print(n)
+      
+      n_row <- c(n,n)
+      t1 <- Sys.time()
+      tables <- gen_tables(n_row, col)
+      group_reduced <- group_reduce(tables, test)
+      t2 <- Sys.time()
+      prep_time <- as.numeric(t2 - t1, units = "secs")
+      
+      t_arr <- c()
+      
+      for(table in tables[[1]]){
+        t_arr <- append(t_arr, microbenchmark(lp_test(table,
+                                                      problem,
+                                                      alpha = 1,
+                                                      N = 100,
+                                                      type = test,
+                                                      pre_tables = tables,
+                                                      pre_group_reduced = group_reduced,
+                                                      show_progress = FALSE,
+                                                      group_length_coefficients = TRUE,
+                                                      scaling = TRUE),
+                                              times = 1)$time * 1e-9)
+      }
+      
+      t_list <- append(t_list, list(t_arr + prep_time))
       len_arr <- append(len_arr, length(t_arr))
     }
   }

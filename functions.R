@@ -595,6 +595,25 @@ make_grid_qmc <- function(col, N, include_edges = TRUE, include_vertices = TRUE,
   return(unname(d))
 }
 
+make_big_grid_qmc <- function(rows, col, N, include_vertex = TRUE){
+  logu <- -log(torus(N * rows, col))
+  d <- logu / margins(logu, 1)
+  big_d <- matrix(0, N, rows * col)
+  for(i in 1:N){
+    for(j in 1:rows){
+      big_d[i, (1 + (j - 1) * col):(j * col)] <- d[(i - 1) * rows + j, ]
+    }
+  }
+  if(include_vertex){
+    first <- rep(0, col)
+    first[1] <- 1
+    others <- rep(0, col)
+    others[2] <- 1
+    big_d <- rbind(big_d, c(first, rep(others, rows - 1)))
+  }
+  return(big_d)
+}
+
 adapt_grid <- function(theta, N_order, background = TRUE, prop = 0.5, include_zero = TRUE, include_mid = TRUE){
   theta_min <- min(theta, 1 - theta)
   col <- length(theta)
@@ -965,43 +984,32 @@ P_coefs <- function(K){
 }
 
 library(gurobi)
-lp_solver <- function(n_row,
-                      col,
-                      alpha,
-                      N = 100,
-                      type = "sym",
-                      pre_tables = NULL,
-                      pre_group_reduced = NULL,
-                      pre_A = NULL,
-                      solver = "gurobi",
-                      auxiliary = FALSE,
-                      group_length_coefficients = TRUE,
-                      scaling = TRUE,
-                      show_progress = FALSE){
-  t_list <- c()
+lp_K <- function(n_row,
+                 col,
+                 alpha,
+                 problem,
+                 N = 100,
+                 type = "sym",
+                 pre_tables = NULL,
+                 pre_group_reduced = NULL,
+                 pre_A = NULL,
+                 auxiliary = FALSE,
+                 group_length_coefficients = TRUE,
+                 scaling = TRUE,
+                 show_progress = FALSE,
+                 pre_B = NULL){
   if(is.null(pre_tables)){
-    t1 <- Sys.time()
     tabnum <- gen_tables(n_row, col)
-    t2 <- Sys.time()
-    t_list <- append(t_list, as.numeric(t2-t1, units="mins"))
-    if(show_progress){
-      print(t2-t1)
-    }
   }
   else{
     tabnum <- pre_tables
   }
-
+  
   tables <- tabnum[[1]]
-
+  
   if(is.null(pre_group_reduced)){
-    t2b <- Sys.time()
     group_reduced <- group_reduce(tabnum, type)
-    t3 <- Sys.time()
-    t_list <- append(t_list, as.numeric(t3-t2b, units="mins"))
-    if(show_progress){
-      print(t3-t2)
-    }  }
+  }
   else{
     group_reduced <- pre_group_reduced
   }
@@ -1011,24 +1019,13 @@ lp_solver <- function(n_row,
   fellows <- group_reduced[[3]]
   actual_indices <- group_reduced[[4]]
   len <- length(group_lengths)
-
+  
   if(is.null(pre_A)){
     theta_grid <- make_grid_qmc(col, N)
+    big_N <- N
     N <- nrow(theta_grid)
-    t4 <- Sys.time()
     A <- matrix(0, N, len)
     if(type == "sym"){
-      # A <- matrix(0, N, len)
-      # for(i in 1:N){
-      #   theta <- theta_grid[i, ]
-      #   for(j in 1:len){
-      #     summation <- 0
-      #     for(fellow in fellows[[j]]){
-      #       summation <- summation + P(theta, fellow)
-      #     }
-      #     A[i, j] <- summation
-      #   }
-      # }
       for(j in 1:len){
         subfellows <- fellows[[j]]
         slen <- group_lengths[[j]]
@@ -1061,11 +1058,6 @@ lp_solver <- function(n_row,
         }
       }
     }
-    t5 <- Sys.time()
-    t_list <- append(t_list, as.numeric(t5-t4, units="mins"))
-    if(show_progress){
-      print(t5-t4)
-    }
   }
   else{
     if(is.matrix(pre_A)){
@@ -1075,19 +1067,11 @@ lp_solver <- function(n_row,
       A <- t(as.matrix(pre_A))
     }
     N <- nrow(A)
+    big_N <- N
     t5 <- Sys.time()
   }
-
-
-  if(solver == "lpSolve"){
-    lp_obj <- rep(1, len)
-    lp_con <- A
-    lp_dir <- rep("<=", N)
-    lp_rhs <- alpha * rep(1, N)
-
-    w <- lp("max", lp_obj, lp_con, lp_dir, lp_rhs, all.bin = TRUE)$solution
-  }
-  else if(solver == "gurobi"){
+  
+  if(problem == 1){
     model <- list()
     model$modelsense <- 'max'
     model$sense <- rep("<=", N)
@@ -1107,8 +1091,8 @@ lp_solver <- function(n_row,
     else{
       model$obj <- rep(1, len)
     }
-
-    params <- list(OutputFlag=1, 
+    
+    params <- list(OutputFlag = as.integer(show_progress), 
                    PoolSearchMode = 2,
                    PoolSolutions = n_row[1])
     
@@ -1122,395 +1106,141 @@ lp_solver <- function(n_row,
         obj_arr[i] <- sum(group_lengths * sol$pool[[i]]$xn)
       }
       w <- sol$pool[[which.max(max_arr[round(obj_arr) == round(max(obj_arr))])]]$xn
-      print(A %*% w)
     }
     else{
       w <- sol$x
     }
-
-    # w <- gurobi(model)$x
   }
-  t6 <- Sys.time()
-  t_list <- append(t_list, as.numeric(t6-t5, units="mins"))
-  if(show_progress){
-    print(t6-t5)
-  }
-
-  if(auxiliary){
-    return(list(round(w), A))
-  }
-  else{
-    K <- rep(0, length(tabnum[[1]]))
-    for(j in 1:len){
-      K[actual_indices[[j]]] <- round(w[j])
-    }
-    return(list(K, t_list))
-  }
-}
-
-lp_solver_2 <- function(n_row,
-                        col,
-                        alpha,
-                        threshold = 0.1,
-                        N = 100,
-                        type = "sym",
-                        pre_tables = NULL,
-                        pre_group_reduced = NULL,
-                        pre_A = NULL,
-                        solver = "gurobi",
-                        auxiliary = FALSE,
-                        group_length_coefficients = TRUE,
-                        scaling = TRUE,
-                        show_progress = FALSE){
-  t_list <- c()
-  if(is.null(pre_tables)){
-    t1 <- Sys.time()
-    tabnum <- gen_tables(n_row, col)
-    t2 <- Sys.time()
-    t_list <- append(t_list, as.numeric(t2-t1, units="mins"))
-    if(show_progress){
-      print(t2-t1)
-    }
-  }
-  else{
-    tabnum <- pre_tables
-  }
-
-  tables <- tabnum[[1]]
-
-  if(is.null(pre_group_reduced)){
-    t2b <- Sys.time()
-    group_reduced <- group_reduce(tabnum, type)
-    t3 <- Sys.time()
-    t_list <- append(t_list, as.numeric(t3-t2b, units="mins"))
-    if(show_progress){
-      print(t3-t2)
-    }  }
-  else{
-    group_reduced <- pre_group_reduced
-  }
-
-  reps <- group_reduced[[1]]
-  group_lengths <- group_reduced[[2]]
-  fellows <- group_reduced[[3]]
-  actual_indices <- group_reduced[[4]]
-  len <- length(group_lengths)
-
-  if(is.null(pre_A)){
-    # theta_grid <- make_grid_qmc(col, N)
-    # theta_grid <- theta_grid[(theta_grid[,1]>threshold & theta_grid[,1]<1-threshold), ]
-    theta_seq <- seq(threshold,1-threshold,length.out=N)
-    theta_grid <- matrix(c(theta_seq,1-theta_seq),N,2)
-    N <- nrow(theta_grid)
-    print(theta_grid)
-    t4 <- Sys.time()
-    A <- matrix(0, N, len)
-    if(type == "sym"){
-      for(j in 1:len){
-        subfellows <- fellows[[j]]
-        slen <- group_lengths[[j]]
-        exp_mat <- matrix(0, slen, col)
-        for(k in 1:slen){
-          exp_mat[k, ] <- margins(subfellows[[k]], 2)
-        }
-        K <- prod(factorial(n_row)) / prod(factorial(reps[[j]]))
-        for(i in 1:N){
-          theta <- theta_grid[i, ]
-          eval_mat <- theta ^ t(exp_mat)
-          A[i, j] <- K * sum(apply(eval_mat, 2, prod))
-        }
-      }
-    } 
-    else{
-      for(j in 1:len){
-        subfellows <- fellows[[j]]
-        slen <- group_lengths[[j]]
-        exp_mat <- matrix(0, slen, col)
-        K_arr <- rep(0, slen)
-        for(k in 1:slen){
-          exp_mat[k, ] <- margins(subfellows[[k]], 2)
-          K_arr[k] <- prod(factorial(n_row)) / prod(factorial(subfellows[[k]]))
-        }
-        for(i in 1:N){
-          theta <- theta_grid[i, ]
-          eval_mat <- theta ^ t(exp_mat)
-          A[i, j] <- sum(K_arr * apply(eval_mat, 2, prod))
-        }
-      }
-    }
-    t5 <- Sys.time()
-    t_list <- append(t_list, as.numeric(t5-t4, units="mins"))
-    if(show_progress){
-      print(t5-t4)
-    }
-  }
-  else{
-    if(is.matrix(pre_A)){
-      A <- pre_A
-    }
-    else{
-      A <- t(as.matrix(pre_A))
-    }
-    N <- nrow(A)
-    t5 <- Sys.time()
-  }
-  Amax <- max(A)
-
-  B <- matrix(0, 2*N, 1 + N + len)
-  B[1:N, 2:(N+1)] <- diag(N)
-  B[1:N, (N+2):(1 + N + len)] <- -A
-  B[(N+1):(2*N), (N+2):(1 + N + len)] <- A
-  print(B)
-
-  if(solver == "lpSolve"){
-    lp_obj <- rep(1, len)
-    lp_con <- A
-    lp_dir <- rep("<=", N)
-    lp_rhs <- alpha * rep(1, N)
-
-    w <- lp("max", lp_obj, lp_con, lp_dir, lp_rhs, all.bin = TRUE)$solution
-  }
-  else if(solver == "gurobi"){
+  
+  else if(problem == 2){
     model <- list()
     model$modelsense <- 'max'
-    model$sense <- rep("<=", 2*N)
-    model$vtype <- c(rep("C", N+1), rep("B", len))
-    model$genconmin[[1]]$resvar <- 1
-    model$genconmin[[1]]$vars <- 2:(N+1)
+    model$sense <- rep("<=", N)
+    model$vtype <- rep("B", len)
+    model$obj <- t(A) %*% rep(1, N)
     if(scaling){
-      model$A <- B/Amax
-      model$rhs <- c(rep(0, N), alpha/Amax * rep(1, N))
+      Amax <- max(A)
+      model$A <- A/Amax
+      model$rhs <- alpha/Amax * rep(1, N)
     }
     else{
-      model$A <- B
+      model$A <- A
+      model$rhs <- alpha * rep(1,N)
+    }
+
+    params <- list(OutputFlag = as.integer(show_progress), 
+                   PoolSearchMode = 2,
+                   PoolSolutions = n_row[1])
+    
+    sol <- gurobi(model, params)
+    lensolpool <- length(sol$pool)
+    if(lensolpool > 1){
+      max_arr <- rep(0, lensolpool)
+      obj_arr <- rep(0, lensolpool)
+      for(i in 1:lensolpool){
+        max_arr[i] <- max(A %*% sol$pool[[i]]$xn)
+        obj_arr[i] <- sum(group_lengths * sol$pool[[i]]$xn)
+      }
+      w <- sol$pool[[which.max(max_arr[round(obj_arr) == round(max(obj_arr))])]]$xn
+    }
+    else{
+      w <- sol$x
+    }
+  }
+  
+  else if(problem == 3){
+    rows <- length(n_row)
+
+    big_theta_grid <- make_big_grid_qmc(rows, col, big_N)
+    big_N <- nrow(big_theta_grid)
+    
+    if(is.null(pre_B)){
+      B <- matrix(0, big_N, len)
+      for(j in 1:len){
+        subfellows <- fellows[[j]]
+        slen <- group_lengths[[j]]
+        exp_mat <- matrix(0, slen, rows * col)
+        K_arr <- rep(0, slen)
+        for(k in 1:slen){
+          exp_mat[k, ] <- c(t(subfellows[[k]]))
+          K_arr[k] <- prod(factorial(n_row)) / prod(factorial(subfellows[[k]]))
+        }
+        for(i in 1:big_N){
+          theta <- big_theta_grid[i, ]
+          eval_mat <- theta ^ t(exp_mat)
+          B[i, j] <- sum(K_arr * apply(eval_mat, 2, prod))
+        }
+      }
+    }
+    else{
+      if(is.matrix(pre_B)){
+        B <- pre_B
+      }
+      else{
+        B <- t(as.matrix(pre_B))
+      }
+      big_N <- nrow(B)
+      t5 <- Sys.time()
+    }
+    
+    Amax <- max(A)
+
+    model <- list()
+    model$modelsense <- 'max'
+    model$sense <- rep("<=", N)
+    model$vtype <- rep("B", len)
+    model$obj <- t(B) %*% rep(1, big_N)
+    if(scaling){
+      model$A <- A/Amax
+      model$rhs <- alpha/Amax * rep(1, N)
+    }
+    else{
+      model$A <- A
       model$rhs <- c(rep(0, N), alpha * rep(1,N))
     }
-    if(group_length_coefficients){
-      model$obj <- c(1, rep(0, N + len))
+
+    params <- list(OutputFlag = as.integer(show_progress))
+    
+    w <- gurobi(model, params)$x
+  }
+  
+  if(auxiliary){
+    if(problem == 3){
+      return(list(w, A, B))
     }
     else{
-      model$obj <- c(1, rep(0, N + len))
+      return(list(w, A))
     }
-
-    params <- list(OutputFlag=0)
-
-    solution <- gurobi(model)$x
-    print(solution)
-    # solution <- gurobi(model, params)$x
-    w <- solution[(N+2):(1+N+len)]
-  }
-  t6 <- Sys.time()
-  t_list <- append(t_list, as.numeric(t6-t5, units="mins"))
-  if(show_progress){
-    print(t6-t5)
-  }
-
-  if(auxiliary){
-    return(list(w, A))
   }
   else{
     K <- rep(0, length(tabnum[[1]]))
     for(j in 1:len){
       K[actual_indices[[j]]] <- w[j]
     }
-    return(list(K, t_list))
+    return(K)
   }
 }
 
-lp_solver_3 <- function(n_row,
+lp_poolbase <- function(base,
                         col,
+                        A,
                         alpha,
-                        N = 100,
-                        type = "sym",
-                        pre_tables = NULL,
-                        pre_group_reduced = NULL,
-                        pre_A = NULL,
-                        solver = "gurobi",
-                        auxiliary = FALSE,
+                        problem,
+                        group_lengths,
+                        fellows,
                         group_length_coefficients = TRUE,
                         scaling = TRUE,
-                        show_progress = FALSE){
-  t_list <- c()
-  if(is.null(pre_tables)){
-    t1 <- Sys.time()
-    tabnum <- gen_tables(n_row, col)
-    t2 <- Sys.time()
-    t_list <- append(t_list, as.numeric(t2-t1, units="mins"))
-    if(show_progress){
-      print(t2-t1)
-    }
-  }
-  else{
-    tabnum <- pre_tables
-  }
-
-  tables <- tabnum[[1]]
-
-  if(is.null(pre_group_reduced)){
-    t2b <- Sys.time()
-    group_reduced <- group_reduce(tabnum, type)
-    t3 <- Sys.time()
-    t_list <- append(t_list, as.numeric(t3-t2b, units="mins"))
-    if(show_progress){
-      print(t3-t2)
-    }  
-  }
-  else{
-    group_reduced <- pre_group_reduced
-  }
-
-  reps <- group_reduced[[1]]
-  group_lengths <- group_reduced[[2]]
-  fellows <- group_reduced[[3]]
-  actual_indices <- group_reduced[[4]]
-  len <- length(group_lengths)
-
-  if(is.null(pre_A)){
-    theta_grid <- make_grid_qmc(col, N)
-    t4 <- Sys.time()
-    A <- matrix(0, N, len)
-    A <- matrix(0, N, len)
-    if(type == "sym"){
-      for(j in 1:len){
-        subfellows <- fellows[[j]]
-        slen <- group_lengths[[j]]
-        exp_mat <- matrix(0, slen, col)
-        for(k in 1:slen){
-          exp_mat[k, ] <- margins(subfellows[[k]], 2)
-        }
-        K <- prod(factorial(n_row)) / prod(factorial(reps[[j]]))
-        for(i in 1:N){
-          theta <- theta_grid[i, ]
-          eval_mat <- theta ^ t(exp_mat)
-          A[i, j] <- K * sum(apply(eval_mat, 2, prod))
-        }
-      }
-    } 
-    else{
-      for(j in 1:len){
-        subfellows <- fellows[[j]]
-        slen <- group_lengths[[j]]
-        exp_mat <- matrix(0, slen, col)
-        K_arr <- rep(0, slen)
-        for(k in 1:slen){
-          exp_mat[k, ] <- margins(subfellows[[k]], 2)
-          K_arr[k] <- prod(factorial(n_row)) / prod(factorial(subfellows[[k]]))
-        }
-        for(i in 1:N){
-          theta <- theta_grid[i, ]
-          eval_mat <- theta ^ t(exp_mat)
-          A[i, j] <- sum(K_arr * apply(eval_mat, 2, prod))
-        }
-      }
-    }
-    t5 <- Sys.time()
-    t_list <- append(t_list, as.numeric(t5-t4, units="mins"))
-    if(show_progress){
-      print(t5-t4)
-    }
-  }
-  else{
-    if(is.matrix(pre_A)){
-      A <- pre_A
-    }
-    else{
-      A <- t(as.matrix(pre_A))
-    }
-    N <- nrow(A)
-    t5 <- Sys.time()
-  }
-  Amax <- max(A)
-
-  B <- matrix(0, 2*N, N + len)
-  B[1:N, 1:N] <- diag(N)
-  B[1:N, (N+1):(N + len)] <- -A
-  B[(N+1):(2*N), (N+1):(N + len)] <- A
-  print(B)
-
-  if(solver == "lpSolve"){
-    lp_obj <- rep(1, len)
-    lp_con <- A
-    lp_dir <- rep("<=", N)
-    lp_rhs <- alpha * rep(1, N)
-
-    w <- lp("max", lp_obj, lp_con, lp_dir, lp_rhs, all.bin = TRUE)$solution
-  }
-  else if(solver == "gurobi"){
-    model <- list()
-    model$modelsense <- 'max'
-    model$sense <- rep("<=", 2*N)
-    model$vtype <- c(rep("C", N), rep("B", len))
-    if(scaling){
-      model$A <- B/Amax
-      model$rhs <- c(rep(0, N), alpha/Amax * rep(1, N))
-    }
-    else{
-      model$A <- B
-      model$rhs <- c(rep(0, N), alpha * rep(1,N))
-    }
-    if(group_length_coefficients){
-      # model$obj <- c(1, rep(0, N + len))
-      model$obj <- c(rep(1,N), rep(0,len))
-    }
-    else{
-      model$obj <- c(rep(1,N), rep(0,len))
-    }
-
-    params <- list(OutputFlag=0)
-
-    solution <- gurobi(model)$x
-    print(solution)
-    # solution <- gurobi(model, params)$x
-    w <- solution[(N+1):(N+len)]
-  }
-  t6 <- Sys.time()
-  t_list <- append(t_list, as.numeric(t6-t5, units="mins"))
-  if(show_progress){
-    print(t6-t5)
-  }
-
-  if(auxiliary){
-    return(list(w, A))
-  }
-  else{
-    K <- rep(0, length(tabnum[[1]]))
-    for(j in 1:len){
-      K[actual_indices[[j]]] <- w[j]
-    }
-    return(list(K, t_list))
-  }
-}
-
-lp_solver_poolbase <- function(group_lengths,
-                               fellows,
-                               actual_indices,
-                               base,
-                               col,
-                               A,
-                               alpha,
-                               solver = "gurobi",
-                               group_length_coefficients = TRUE,
-                               scaling = TRUE){
-  len <- length(fellows)
+                        B = NULL){
   N <- length(base)
-
-  theta_grid <- make_grid_qmc(col, N)
-
-  if(solver == "lpSolve"){
-    lp_obj <- rep(1, len)
-    lp_con <- A
-    lp_dir <- rep("<=", N)
-    lp_rhs <- alpha * rep(1, N) - base
-
-    w <- lp("max", lp_obj, lp_con, lp_dir, lp_rhs, all.bin = TRUE)$solution
-  }
-  else if(solver == "gurobi"){
+  len <- length(fellows)
+  
+  if(problem == 1){
     model <- list()
     model$obj <- rep(1, len)
     model$modelsense <- 'max'
     model$sense <- rep("<=", N)
     model$vtype <- rep("B", len)
-
+    
     if(scaling){
       Amax <- max(A)
       model$A <- A/Amax
@@ -1526,28 +1256,88 @@ lp_solver_poolbase <- function(group_lengths,
     else{
       model$obj <- rep(1, len)
     }
-
-    params <- list(OutputFlag=0)
-
-    # w <- gurobi(model)$x
+    
+    params <- list(OutputFlag = 0, 
+                   PoolSearchMode = 2,
+                   PoolSolutions = n_row[1])
+    
+    sol <- gurobi(model, params)
+    lensolpool <- length(sol$pool)
+    if(lensolpool > 1){
+      max_arr <- rep(0, lensolpool)
+      obj_arr <- rep(0, lensolpool)
+      for(i in 1:lensolpool){
+        max_arr[i] <- max(A %*% sol$pool[[i]]$xn)
+        obj_arr[i] <- sum(group_lengths * sol$pool[[i]]$xn)
+      }
+      w <- sol$pool[[which.max(max_arr[round(obj_arr) == round(max(obj_arr))])]]$xn
+    }
+    else{
+      w <- sol$x
+    }
+  }
+  
+  else if(problem == 2){
+    model <- list()
+    model$modelsense <- 'max'
+    model$sense <- rep("<=", N)
+    model$vtype <- rep("B", len)
+    model$obj <- t(A) %*% rep(1, N)
+    if(scaling){
+      Amax <- max(A)
+      model$A <- A/Amax
+      model$rhs <- alpha/Amax * rep(1, N) - base/Amax
+    }
+    else{
+      model$A <- A
+      model$rhs <- alpha * rep(1,N) - base
+    }
+    
+    params <- list(OutputFlag = 0)
+    
     w <- gurobi(model, params)$x
   }
-
+  
+  else if(problem == 3){
+    Amax <- max(A)
+    
+    model <- list()
+    model$modelsense <- 'max'
+    model$sense <- rep("<=", N)
+    model$vtype <- rep("B", len)
+    model$obj <- t(B) %*% rep(1, nrow(B))
+    if(scaling){
+      model$A <- A/Amax
+      model$rhs <- alpha/Amax * rep(1, N) - base / Amax
+    }
+    else{
+      model$A <- A
+      model$rhs <- c(rep(0, N), alpha * rep(1,N)) - base
+    }
+    
+    params <- list(OutputFlag = 0)
+    
+    w <- gurobi(model, params)$x
+  }
+  
   return(w == 1)
 }
 
 lp_test <- function(table,
+                    problem,
                     alpha = 1,
                     N = 100,
                     type = "sym",
                     pre_tables = NULL,
                     pre_group_reduced = NULL,
-                    solver = "gurobi",
                     show_progress = FALSE,
-                    group_length_coefficients = TRUE){
+                    group_length_coefficients = TRUE,
+                    scaling = TRUE,
+                    explore = FALSE,
+                    tries = 100){
   n_row <- margins(table, 1)
   col <- ncol(table)
-
+  
   if(is.null(pre_tables)){
     tabnum <- gen_tables(n_row, col)
   }
@@ -1560,14 +1350,14 @@ lp_test <- function(table,
   else{
     group_reduced <- pre_group_reduced
   }
-
+  
   numbers <- tabnum[[2]]
-
+  
   group_lengths <- group_reduced[[2]]
   fellows <- group_reduced[[3]]
   actual_indices <- group_reduced[[4]]
   len <- length(group_lengths)
-
+  
   table_index <- which(numbers == table_to_number(table))
   for(i in 1:len){
     if(table_index %in% actual_indices[[i]]){
@@ -1575,98 +1365,152 @@ lp_test <- function(table,
       break
     }
   }
-
-  aux <- lp_solver(n_row,
-                   col,
-                   alpha,
-                   N,
-                   type,
-                   tabnum,
-                   group_reduced,
-                   NULL,
-                   solver,
-                   auxiliary = TRUE,
-                   group_length_coefficients)
+  
+  aux <- lp_K(n_row,
+              col,
+              alpha,
+              problem,
+              N,
+              type,
+              pre_tables,
+              pre_group_reduced,
+              NULL,
+              TRUE,
+              group_length_coefficients)
   w <- aux[[1]]
   A <- aux[[2]]
-
+  total_A <- A
+  B <- NULL
+  if(problem == 3){
+    B <- aux[[3]]
+  }
+  total_B <- B
+  
   if(w[group_index]){
     status <- abs(w-1) < 0.5 # sometimes non 0/1 entries in w?
     A <- as.matrix(A[, status])
+    if(problem == 3){
+      B <- as.matrix(B[, status])
+    }
     group_lengths <- group_lengths[status]
     fellows <- fellows[status]
     actual_indices <- actual_indices[status]
     status <- status[status]
-
+    
     current_actual_indices <- actual_indices
-
+    
     index <- sum(w[1:group_index])
     level <- alpha
-    base <- rep(0, N)
+    base <- rep(0, nrow(A))
     k <- 1
-
+    
     while(suppressWarnings(any(unlist(current_actual_indices) != actual_indices[[index]]))){
       if(show_progress){
         print(k)
+        print(level)
       }
       if(status[index]){
         current_A <- as.matrix(A[, status])
+        if(problem == 3){
+          current_B <- as.matrix(B[, status])
+        }
         current_group_lengths <- group_lengths[status]
         current_fellows <- fellows[status]
         current_actual_indices <- actual_indices[status]
-
+        
         level <- level - alpha / 2 ^ k
         old_status <- status
-        status[status] <- lp_solver_poolbase(current_group_lengths,
-                                             current_fellows,
-                                             current_actual_indices,
-                                             base,
-                                             col,
-                                             current_A,
-                                             level,
-                                             solver,
-                                             group_length_coefficients)
+        status[status] <- lp_poolbase(base,
+                                      col,
+                                      current_A,
+                                      level,
+                                      problem,
+                                      current_group_lengths,
+                                      current_fellows,
+                                      group_length_coefficients,
+                                      scaling,
+                                      current_B)
       }
       else{
         base <- base + A %*% status
-
+        
         status <- as.logical(old_status - status)
-
+        
         current_A <- as.matrix(A[, status])
+        if(problem == 3){
+          current_B <- as.matrix(B[, status])
+        }
         current_group_lengths <- group_lengths[status]
         current_fellows <- fellows[status]
         current_actual_indices <- actual_indices[status]
-
+        
         level <- level + alpha / 2 ^ k
         old_status <- status
-        status[status] <-lp_solver_poolbase(current_group_lengths,
-                                            current_fellows,
-                                            current_actual_indices,
-                                            base,
-                                            col,
-                                            current_A,
-                                            level,
-                                            solver,
-                                            group_length_coefficients)
+        status[status] <- lp_poolbase(base,
+                                      col,
+                                      current_A,
+                                      level,
+                                      problem,
+                                      current_group_lengths,
+                                      current_fellows,
+                                      group_length_coefficients,
+                                      scaling,
+                                      current_B)
       }
       k <- k + 1
     }
-
-    return(max(base + A %*% old_status))
+    
+    current <- A %*% old_status
+    pval <- max(base + current)
+    
+    if(explore){
+      old_pval <- 1
+      new_pval <- pval
+      width <- max(current)
+      while(old_pval != new_pval){
+        if(show_progress){
+          print(new_pval)
+        }
+        alpha_tries <- seq(new_pval/2, new_pval, length.out = tries)
+        old_pval <- new_pval
+        for(alpha in alpha_tries){
+          w <- lp_K(n_row,
+                    col,
+                    alpha,
+                    problem,
+                    N,
+                    type,
+                    tabnum,
+                    group_reduced,
+                    total_A,
+                    TRUE,
+                    pre_B = total_B)[[1]]
+          if(w[group_index] == 1){
+            new_pval <- alpha
+            break
+          }
+        }
+      }
+      return(new_pval)
+    }
+    else{
+      return(pval)
+    }
   }
   else{
     if(show_progress){
       print(min(2*alpha,1))
     }
     lp_test(table,
-            min(2*alpha,1),
+            problem,
+            min(2 * alpha, 1),
             N,
             type,
             tabnum,
             group_reduced,
-            solver,
             show_progress,
-            group_length_coefficients)
+            group_length_coefficients,
+            scaling)
   }
 }
 
@@ -1834,6 +1678,743 @@ lp_test_explorer <- function(table,
     }
   }
   return(new_pval)
+}
+
+lp_solver <- function(n_row,
+                      col,
+                      alpha,
+                      N = 100,
+                      type = "sym",
+                      pre_tables = NULL,
+                      pre_group_reduced = NULL,
+                      pre_A = NULL,
+                      solver = "gurobi",
+                      auxiliary = FALSE,
+                      group_length_coefficients = TRUE,
+                      scaling = TRUE,
+                      show_progress = FALSE){
+  t_list <- c()
+  if(is.null(pre_tables)){
+    t1 <- Sys.time()
+    tabnum <- gen_tables(n_row, col)
+    t2 <- Sys.time()
+    t_list <- append(t_list, as.numeric(t2-t1, units="mins"))
+    if(show_progress){
+      print(t2-t1)
+    }
+  }
+  else{
+    tabnum <- pre_tables
+  }
+  
+  tables <- tabnum[[1]]
+  
+  if(is.null(pre_group_reduced)){
+    t2b <- Sys.time()
+    group_reduced <- group_reduce(tabnum, type)
+    t3 <- Sys.time()
+    t_list <- append(t_list, as.numeric(t3-t2b, units="mins"))
+    if(show_progress){
+      print(t3-t2)
+    }  }
+  else{
+    group_reduced <- pre_group_reduced
+  }
+  
+  reps <- group_reduced[[1]]
+  group_lengths <- group_reduced[[2]]
+  fellows <- group_reduced[[3]]
+  actual_indices <- group_reduced[[4]]
+  len <- length(group_lengths)
+  
+  if(is.null(pre_A)){
+    theta_grid <- make_grid_qmc(col, N)
+    N <- nrow(theta_grid)
+    t4 <- Sys.time()
+    A <- matrix(0, N, len)
+    if(type == "sym"){
+      # A <- matrix(0, N, len)
+      # for(i in 1:N){
+      #   theta <- theta_grid[i, ]
+      #   for(j in 1:len){
+      #     summation <- 0
+      #     for(fellow in fellows[[j]]){
+      #       summation <- summation + P(theta, fellow)
+      #     }
+      #     A[i, j] <- summation
+      #   }
+      # }
+      for(j in 1:len){
+        subfellows <- fellows[[j]]
+        slen <- group_lengths[[j]]
+        exp_mat <- matrix(0, slen, col)
+        for(k in 1:slen){
+          exp_mat[k, ] <- margins(subfellows[[k]], 2)
+        }
+        K <- prod(factorial(n_row)) / prod(factorial(reps[[j]]))
+        for(i in 1:N){
+          theta <- theta_grid[i, ]
+          eval_mat <- theta ^ t(exp_mat)
+          A[i, j] <- K * sum(apply(eval_mat, 2, prod))
+        }
+      }
+    } 
+    else{
+      for(j in 1:len){
+        subfellows <- fellows[[j]]
+        slen <- group_lengths[[j]]
+        exp_mat <- matrix(0, slen, col)
+        K_arr <- rep(0, slen)
+        for(k in 1:slen){
+          exp_mat[k, ] <- margins(subfellows[[k]], 2)
+          K_arr[k] <- prod(factorial(n_row)) / prod(factorial(subfellows[[k]]))
+        }
+        for(i in 1:N){
+          theta <- theta_grid[i, ]
+          eval_mat <- theta ^ t(exp_mat)
+          A[i, j] <- sum(K_arr * apply(eval_mat, 2, prod))
+        }
+      }
+    }
+    t5 <- Sys.time()
+    t_list <- append(t_list, as.numeric(t5-t4, units="mins"))
+    if(show_progress){
+      print(t5-t4)
+    }
+  }
+  else{
+    if(is.matrix(pre_A)){
+      A <- pre_A
+    }
+    else{
+      A <- t(as.matrix(pre_A))
+    }
+    N <- nrow(A)
+    t5 <- Sys.time()
+  }
+  
+  
+  if(solver == "lpSolve"){
+    lp_obj <- rep(1, len)
+    lp_con <- A
+    lp_dir <- rep("<=", N)
+    lp_rhs <- alpha * rep(1, N)
+    
+    w <- lp("max", lp_obj, lp_con, lp_dir, lp_rhs, all.bin = TRUE)$solution
+  }
+  else if(solver == "gurobi"){
+    model <- list()
+    model$modelsense <- 'max'
+    model$sense <- rep("<=", N)
+    model$vtype <- rep("B", len)
+    if(scaling){
+      Amax <- max(A)
+      model$A <- A/Amax
+      model$rhs <- alpha/Amax * rep(1, N)
+    }
+    else{
+      model$A <- A
+      model$rhs <- alpha * rep(1,N)
+    }
+    if(group_length_coefficients){
+      model$obj <- group_lengths
+    }
+    else{
+      model$obj <- rep(1, len)
+    }
+    
+    params <- list(OutputFlag=1, 
+                   PoolSearchMode = 2,
+                   PoolSolutions = n_row[1])
+    
+    sol <- gurobi(model, params)
+    lensolpool <- length(sol$pool)
+    if(lensolpool > 1){
+      max_arr <- rep(0, lensolpool)
+      obj_arr <- rep(0, lensolpool)
+      for(i in 1:lensolpool){
+        max_arr[i] <- max(A %*% sol$pool[[i]]$xn)
+        obj_arr[i] <- sum(group_lengths * sol$pool[[i]]$xn)
+      }
+      w <- sol$pool[[which.max(max_arr[round(obj_arr) == round(max(obj_arr))])]]$xn
+      print(A %*% w)
+    }
+    else{
+      w <- sol$x
+    }
+    
+    # w <- gurobi(model)$x
+  }
+  t6 <- Sys.time()
+  t_list <- append(t_list, as.numeric(t6-t5, units="mins"))
+  if(show_progress){
+    print(t6-t5)
+  }
+  
+  if(auxiliary){
+    return(list(round(w), A))
+  }
+  else{
+    K <- rep(0, length(tabnum[[1]]))
+    for(j in 1:len){
+      K[actual_indices[[j]]] <- round(w[j])
+    }
+    return(list(K, t_list))
+  }
+}
+
+lp_solver_2 <- function(n_row,
+                        col,
+                        alpha,
+                        threshold = 0.01,
+                        N = 100,
+                        type = "sym",
+                        pre_tables = NULL,
+                        pre_group_reduced = NULL,
+                        pre_A = NULL,
+                        solver = "gurobi",
+                        auxiliary = FALSE,
+                        group_length_coefficients = TRUE,
+                        scaling = TRUE,
+                        show_progress = FALSE){
+  t_list <- c()
+  if(is.null(pre_tables)){
+    t1 <- Sys.time()
+    tabnum <- gen_tables(n_row, col)
+    t2 <- Sys.time()
+    t_list <- append(t_list, as.numeric(t2-t1, units="mins"))
+    if(show_progress){
+      print(t2-t1)
+    }
+  }
+  else{
+    tabnum <- pre_tables
+  }
+  
+  tables <- tabnum[[1]]
+  
+  if(is.null(pre_group_reduced)){
+    t2b <- Sys.time()
+    group_reduced <- group_reduce(tabnum, type)
+    t3 <- Sys.time()
+    t_list <- append(t_list, as.numeric(t3-t2b, units="mins"))
+    if(show_progress){
+      print(t3-t2)
+    }  
+  }
+  else{
+    group_reduced <- pre_group_reduced
+  }
+  
+  reps <- group_reduced[[1]]
+  group_lengths <- group_reduced[[2]]
+  fellows <- group_reduced[[3]]
+  actual_indices <- group_reduced[[4]]
+  len <- length(group_lengths)
+  
+  if(is.null(pre_A)){
+    theta_grid <- make_grid_qmc(col, N, include_vertices = FALSE)
+    filtered <- rep(TRUE, nrow(theta_grid))
+    for(i in 1:nrow(theta_grid)){
+      for(j in 1:col){
+        if(theta_grid[i, j] < threshold | 1 - theta_grid[i, j] < threshold){
+          filtered[i] <- FALSE
+        }
+      }
+    }
+    theta_grid <- theta_grid[filtered, ]
+    # theta_grid <- theta_grid[(theta_grid[,1]>threshold & theta_grid[,1]<1-threshold), ]
+    # theta_seq <- seq(threshold,1-threshold,length.out=N)
+    # theta_grid <- matrix(c(theta_seq,1-theta_seq),N,2)
+    N <- nrow(theta_grid)
+    print(theta_grid)
+    t4 <- Sys.time()
+    A <- matrix(0, N, len)
+    if(type == "sym"){
+      for(j in 1:len){
+        subfellows <- fellows[[j]]
+        slen <- group_lengths[[j]]
+        exp_mat <- matrix(0, slen, col)
+        for(k in 1:slen){
+          exp_mat[k, ] <- margins(subfellows[[k]], 2)
+        }
+        K <- prod(factorial(n_row)) / prod(factorial(reps[[j]]))
+        for(i in 1:N){
+          theta <- theta_grid[i, ]
+          eval_mat <- theta ^ t(exp_mat)
+          A[i, j] <- K * sum(apply(eval_mat, 2, prod))
+        }
+      }
+    } 
+    else{
+      for(j in 1:len){
+        subfellows <- fellows[[j]]
+        slen <- group_lengths[[j]]
+        exp_mat <- matrix(0, slen, col)
+        K_arr <- rep(0, slen)
+        for(k in 1:slen){
+          exp_mat[k, ] <- margins(subfellows[[k]], 2)
+          K_arr[k] <- prod(factorial(n_row)) / prod(factorial(subfellows[[k]]))
+        }
+        for(i in 1:N){
+          theta <- theta_grid[i, ]
+          eval_mat <- theta ^ t(exp_mat)
+          A[i, j] <- sum(K_arr * apply(eval_mat, 2, prod))
+        }
+      }
+    }
+    t5 <- Sys.time()
+    t_list <- append(t_list, as.numeric(t5-t4, units="mins"))
+    if(show_progress){
+      print(t5-t4)
+    }
+  }
+  else{
+    if(is.matrix(pre_A)){
+      A <- pre_A
+    }
+    else{
+      A <- t(as.matrix(pre_A))
+    }
+    N <- nrow(A)
+    t5 <- Sys.time()
+  }
+  Amax <- max(A)
+  
+  B <- matrix(0, 2*N, 1 + N + len)
+  B[1:N, 2:(N+1)] <- diag(N)
+  B[1:N, (N+2):(1 + N + len)] <- -10000*A
+  B[(N+1):(2*N), (N+2):(1 + N + len)] <- A
+  print(B)
+
+  if(solver == "lpSolve"){
+    lp_obj <- rep(1, len)
+    lp_con <- A
+    lp_dir <- rep("<=", N)
+    lp_rhs <- alpha * rep(1, N)
+    
+    w <- lp("max", lp_obj, lp_con, lp_dir, lp_rhs, all.bin = TRUE)$solution
+  }
+  else if(solver == "gurobi"){
+    model <- list()
+    model$modelsense <- 'max'
+    model$sense <- rep("<=", 2*N)
+    model$vtype <- c(rep("C", N+1), rep("B", len))
+    model$genconmin[[1]]$resvar <- 1
+    model$genconmin[[1]]$vars <- 2:(N+1)
+    if(scaling){
+      model$A <- B/Amax
+      model$rhs <- c(rep(0, N), alpha/Amax * rep(1, N))
+    }
+    else{
+      model$A <- B
+      model$rhs <- c(rep(0, N), alpha * rep(1,N))
+    }
+    if(group_length_coefficients){
+      model$obj <- c(1, rep(0, N), rep(0.00001, len))
+    }
+    else{
+      model$obj <- c(1, rep(0, N + len))
+    }
+    
+    params <- list(OutputFlag=1,
+                   PoolSearchMode = 2,
+                   PoolSolutions = n_row[1])
+    
+    # params <- list(OutputFlag=1)
+    
+    sol <- gurobi(model, params)
+    lensolpool <- length(sol$pool)
+    if(lensolpool > 1){
+      max_arr <- rep(0, lensolpool)
+      obj_arr <- rep(0, lensolpool)
+      for(i in 1:lensolpool){
+        max_arr[i] <- max(A %*% sol$pool[[i]]$xn[(N+2):(1+N+len)])
+        obj_arr[i] <- sum(group_lengths * sol$pool[[i]]$xn[(N+2):(1+N+len)])
+      }
+      w <- sol$pool[[which.max(max_arr[round(obj_arr) == round(max(obj_arr))])]]$xn[(N+2):(1+N+len)]
+      # print(A %*% w)
+    }
+    else{
+      w <- sol$x[(N+2):(1+N+len)]
+    }
+    
+    # params <- list(OutputFlag=0)
+    # 
+    # solution <- gurobi(model)$x
+    # print(solution)
+    # # solution <- gurobi(model, params)$x
+    # w <- solution[(N+2):(1+N+len)]
+  }
+  t6 <- Sys.time()
+  t_list <- append(t_list, as.numeric(t6-t5, units="mins"))
+  if(show_progress){
+    print(t6-t5)
+  }
+  
+  if(auxiliary){
+    return(list(w, A))
+  }
+  else{
+    K <- rep(0, length(tabnum[[1]]))
+    for(j in 1:len){
+      K[actual_indices[[j]]] <- w[j]
+    }
+    return(list(K, t_list))
+  }
+}
+
+lp_solver_3 <- function(n_row,
+                        col,
+                        alpha,
+                        N = 100,
+                        type = "sym",
+                        pre_tables = NULL,
+                        pre_group_reduced = NULL,
+                        pre_A = NULL,
+                        solver = "gurobi",
+                        auxiliary = FALSE,
+                        group_length_coefficients = TRUE,
+                        scaling = TRUE,
+                        show_progress = FALSE){
+  t_list <- c()
+  if(is.null(pre_tables)){
+    t1 <- Sys.time()
+    tabnum <- gen_tables(n_row, col)
+    t2 <- Sys.time()
+    t_list <- append(t_list, as.numeric(t2-t1, units="mins"))
+    if(show_progress){
+      print(t2-t1)
+    }
+  }
+  else{
+    tabnum <- pre_tables
+  }
+  
+  tables <- tabnum[[1]]
+  
+  if(is.null(pre_group_reduced)){
+    t2b <- Sys.time()
+    group_reduced <- group_reduce(tabnum, type)
+    t3 <- Sys.time()
+    t_list <- append(t_list, as.numeric(t3-t2b, units="mins"))
+    if(show_progress){
+      print(t3-t2)
+    }  
+  }
+  else{
+    group_reduced <- pre_group_reduced
+  }
+  
+  reps <- group_reduced[[1]]
+  group_lengths <- group_reduced[[2]]
+  fellows <- group_reduced[[3]]
+  actual_indices <- group_reduced[[4]]
+  len <- length(group_lengths)
+  
+  if(is.null(pre_A)){
+    theta_grid <- make_grid_qmc(col, N)
+    t4 <- Sys.time()
+    A <- matrix(0, N, len)
+    A <- matrix(0, N, len)
+    if(type == "sym"){
+      for(j in 1:len){
+        subfellows <- fellows[[j]]
+        slen <- group_lengths[[j]]
+        exp_mat <- matrix(0, slen, col)
+        for(k in 1:slen){
+          exp_mat[k, ] <- margins(subfellows[[k]], 2)
+        }
+        K <- prod(factorial(n_row)) / prod(factorial(reps[[j]]))
+        for(i in 1:N){
+          theta <- theta_grid[i, ]
+          eval_mat <- theta ^ t(exp_mat)
+          A[i, j] <- K * sum(apply(eval_mat, 2, prod))
+        }
+      }
+    } 
+    else{
+      for(j in 1:len){
+        subfellows <- fellows[[j]]
+        slen <- group_lengths[[j]]
+        exp_mat <- matrix(0, slen, col)
+        K_arr <- rep(0, slen)
+        for(k in 1:slen){
+          exp_mat[k, ] <- margins(subfellows[[k]], 2)
+          K_arr[k] <- prod(factorial(n_row)) / prod(factorial(subfellows[[k]]))
+        }
+        for(i in 1:N){
+          theta <- theta_grid[i, ]
+          eval_mat <- theta ^ t(exp_mat)
+          A[i, j] <- sum(K_arr * apply(eval_mat, 2, prod))
+        }
+      }
+    }
+    t5 <- Sys.time()
+    t_list <- append(t_list, as.numeric(t5-t4, units="mins"))
+    if(show_progress){
+      print(t5-t4)
+    }
+  }
+  else{
+    if(is.matrix(pre_A)){
+      A <- pre_A
+    }
+    else{
+      A <- t(as.matrix(pre_A))
+    }
+    N <- nrow(A)
+    t5 <- Sys.time()
+  }
+  Amax <- max(A)
+  
+  B <- matrix(0, 2*N, N + len)
+  B[1:N, 1:N] <- diag(N)
+  B[1:N, (N+1):(N + len)] <- -A
+  B[(N+1):(2*N), (N+1):(N + len)] <- A
+  print(B)
+  
+  if(solver == "lpSolve"){
+    lp_obj <- rep(1, len)
+    lp_con <- A
+    lp_dir <- rep("<=", N)
+    lp_rhs <- alpha * rep(1, N)
+    
+    w <- lp("max", lp_obj, lp_con, lp_dir, lp_rhs, all.bin = TRUE)$solution
+  }
+  else if(solver == "gurobi"){
+    model <- list()
+    model$modelsense <- 'max'
+    model$sense <- rep("<=", 2*N)
+    model$vtype <- c(rep("C", N), rep("B", len))
+    if(scaling){
+      model$A <- B/Amax
+      model$rhs <- c(rep(0, N), alpha/Amax * rep(1, N))
+    }
+    else{
+      model$A <- B
+      model$rhs <- c(rep(0, N), alpha * rep(1,N))
+    }
+    if(group_length_coefficients){
+      # model$obj <- c(1, rep(0, N + len))
+      model$obj <- c(rep(1,N), rep(0,len))
+    }
+    else{
+      model$obj <- c(rep(1,N), rep(0,len))
+    }
+    
+    params <- list(OutputFlag=0)
+    
+    solution <- gurobi(model)$x
+    print(solution)
+    # solution <- gurobi(model, params)$x
+    w <- solution[(N+1):(N+len)]
+  }
+  t6 <- Sys.time()
+  t_list <- append(t_list, as.numeric(t6-t5, units="mins"))
+  if(show_progress){
+    print(t6-t5)
+  }
+  
+  if(auxiliary){
+    return(list(w, A))
+  }
+  else{
+    K <- rep(0, length(tabnum[[1]]))
+    for(j in 1:len){
+      K[actual_indices[[j]]] <- w[j]
+    }
+    return(list(K, t_list))
+  }
+}
+
+lp_solver_poolbase <- function(group_lengths,
+                               fellows,
+                               actual_indices,
+                               base,
+                               col,
+                               A,
+                               alpha,
+                               solver = "gurobi",
+                               group_length_coefficients = TRUE,
+                               scaling = TRUE){
+  len <- length(fellows)
+  N <- length(base)
+  
+  theta_grid <- make_grid_qmc(col, N)
+  
+  if(solver == "lpSolve"){
+    lp_obj <- rep(1, len)
+    lp_con <- A
+    lp_dir <- rep("<=", N)
+    lp_rhs <- alpha * rep(1, N) - base
+    
+    w <- lp("max", lp_obj, lp_con, lp_dir, lp_rhs, all.bin = TRUE)$solution
+  }
+  else if(solver == "gurobi"){
+    model <- list()
+    model$obj <- rep(1, len)
+    model$modelsense <- 'max'
+    model$sense <- rep("<=", N)
+    model$vtype <- rep("B", len)
+    
+    if(scaling){
+      Amax <- max(A)
+      model$A <- A/Amax
+      model$rhs <- alpha/Amax * rep(1, N) - base/Amax
+    }
+    else{
+      model$A <- A
+      model$rhs <- alpha * rep(1, N) - base
+    }
+    if(group_length_coefficients){
+      model$obj <- group_lengths
+    }
+    else{
+      model$obj <- rep(1, len)
+    }
+    
+    params <- list(OutputFlag=0)
+    
+    # w <- gurobi(model)$x
+    w <- gurobi(model, params)$x
+  }
+  
+  return(w == 1)
+}
+
+lp_test_old <- function(table,
+                        alpha = 1,
+                        N = 100,
+                        type = "sym",
+                        pre_tables = NULL,
+                        pre_group_reduced = NULL,
+                        solver = "gurobi",
+                        show_progress = FALSE,
+                        group_length_coefficients = TRUE){
+  n_row <- margins(table, 1)
+  col <- ncol(table)
+  
+  if(is.null(pre_tables)){
+    tabnum <- gen_tables(n_row, col)
+  }
+  else{
+    tabnum <- pre_tables
+  }
+  if(is.null(pre_group_reduced)){
+    group_reduced <- group_reduce(tabnum, type)
+  }
+  else{
+    group_reduced <- pre_group_reduced
+  }
+  
+  numbers <- tabnum[[2]]
+  
+  group_lengths <- group_reduced[[2]]
+  fellows <- group_reduced[[3]]
+  actual_indices <- group_reduced[[4]]
+  len <- length(group_lengths)
+  
+  table_index <- which(numbers == table_to_number(table))
+  for(i in 1:len){
+    if(table_index %in% actual_indices[[i]]){
+      group_index <- i
+      break
+    }
+  }
+  
+  aux <- lp_solver(n_row,
+                   col,
+                   alpha,
+                   N,
+                   type,
+                   tabnum,
+                   group_reduced,
+                   NULL,
+                   solver,
+                   auxiliary = TRUE,
+                   group_length_coefficients)
+  w <- aux[[1]]
+  A <- aux[[2]]
+  
+  if(w[group_index]){
+    status <- abs(w-1) < 0.5 # sometimes non 0/1 entries in w?
+    A <- as.matrix(A[, status])
+    group_lengths <- group_lengths[status]
+    fellows <- fellows[status]
+    actual_indices <- actual_indices[status]
+    status <- status[status]
+    
+    current_actual_indices <- actual_indices
+    
+    index <- sum(w[1:group_index])
+    level <- alpha
+    base <- rep(0, nrow(A))
+    k <- 1
+    
+    while(suppressWarnings(any(unlist(current_actual_indices) != actual_indices[[index]]))){
+      if(show_progress){
+        print(k)
+      }
+      if(status[index]){
+        current_A <- as.matrix(A[, status])
+        current_group_lengths <- group_lengths[status]
+        current_fellows <- fellows[status]
+        current_actual_indices <- actual_indices[status]
+        
+        level <- level - alpha / 2 ^ k
+        old_status <- status
+        status[status] <- lp_solver_poolbase(current_group_lengths,
+                                             current_fellows,
+                                             current_actual_indices,
+                                             base,
+                                             col,
+                                             current_A,
+                                             level,
+                                             solver,
+                                             group_length_coefficients)
+      }
+      else{
+        base <- base + A %*% status
+        
+        status <- as.logical(old_status - status)
+        
+        current_A <- as.matrix(A[, status])
+        current_group_lengths <- group_lengths[status]
+        current_fellows <- fellows[status]
+        current_actual_indices <- actual_indices[status]
+        
+        level <- level + alpha / 2 ^ k
+        old_status <- status
+        status[status] <-lp_solver_poolbase(current_group_lengths,
+                                            current_fellows,
+                                            current_actual_indices,
+                                            base,
+                                            col,
+                                            current_A,
+                                            level,
+                                            solver,
+                                            group_length_coefficients)
+      }
+      k <- k + 1
+    }
+    
+    return(max(base + A %*% old_status))
+  }
+  else{
+    if(show_progress){
+      print(min(2*alpha,1))
+    }
+    lp_test_old(table,
+                min(2*alpha,1),
+                N,
+                type,
+                tabnum,
+                group_reduced,
+                solver,
+                show_progress,
+                group_length_coefficients)
+  }
 }
 
 grid_sort <- function(history, theta_grid){
@@ -2045,6 +2626,13 @@ plot_power_matrix <- function(power_mat, negative = FALSE){
   axis(1, at = seq(1, res + 1, length.out = 11), labels = seq(0, 1, 0.1))
   axis(2, at = seq(1, res + 1, length.out = 11), labels = seq(0, 1, 0.1))
   lines(seq(1, res + 1, length.out = 11),seq(1, res + 1, length.out = 11))
+}
+
+plot_K <- function(n_row, K){
+  K_mat <- matrix(K, n_row[1] + 1, n_row[2] + 1)
+  image(K_mat, col=grey(seq(1,0,length.out=256)), axes = FALSE)
+  axis(1, at = seq(0,1,length.out=n_row[1] + 1), labels = seq(0, n_row[1]))
+  axis(2, at = seq(0,1,length.out=n_row[2] + 1), labels = seq(0, n_row[2]))
 }
 
 plot_size <- function(alpha, n, test_list, Delta=0.01){
