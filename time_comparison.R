@@ -1,12 +1,11 @@
 source("functions.R")
 library(microbenchmark)
 
-k_arr <- 3:4
-n_arr <- 1 * k_arr
+k_arr <- 1:5
+n_arr <- 5 * k_arr
 col <- 2
-test_list <- list("lp_1_sym",
-                  "lp_1_chisq",
-                  "lp_3_vol_classes")
+test_list <- list("lp_1_chisq",
+                  "lp_1_vol_classes")
 
 t_list_list <- list()
 len_list <- list()

@@ -876,7 +876,7 @@ supremum_ordering <- function(n_row,
   return(list(order_array, p_array, history))
 }
 
-built_in_fisher_test <- function(n_row, col, pre_tables = NULL, show_progress = TRUE){
+built_in_fisher_test <- function(n_row, col, pre_tables = NULL, show_progress = FALSE){
   if(is.null(pre_tables)){
     tabnum <- gen_tables(n_row, col)
     tables <- tabnum[[1]]
@@ -900,7 +900,7 @@ built_in_fisher_test <- function(n_row, col, pre_tables = NULL, show_progress = 
   return(p_array)
 }
 
-built_in_chisq_test <- function(n_row, col, pre_tables = NULL, show_progress = TRUE){
+built_in_chisq_test <- function(n_row, col, pre_tables = NULL, show_progress = FALSE){
   if(is.null(pre_tables)){
     tabnum <- gen_tables(n_row, col)
     tables <- tabnum[[1]]
@@ -924,7 +924,6 @@ built_in_chisq_test <- function(n_row, col, pre_tables = NULL, show_progress = T
   }
   else{
     for(i in 1:len){
-      print(c(i, len))
       pval <- chisq.test(tables[[i]])$p.value
       if(is.nan(pval)){
         p_array[i] <- 1
@@ -1320,7 +1319,14 @@ lp_poolbase <- function(base,
     w <- gurobi(model, params)$x
   }
   
-  return(w == 1)
+  if(is.null(w)){
+    return(NULL)
+  }
+  
+  else{
+    return(w == 1)
+    
+  }
 }
 
 lp_test <- function(table,
@@ -1334,7 +1340,8 @@ lp_test <- function(table,
                     group_length_coefficients = TRUE,
                     scaling = TRUE,
                     explore = FALSE,
-                    tries = 100){
+                    tries = 100,
+                    max_iter = 1000){
   n_row <- margins(table, 1)
   col <- ncol(table)
   
@@ -1357,7 +1364,7 @@ lp_test <- function(table,
   fellows <- group_reduced[[3]]
   actual_indices <- group_reduced[[4]]
   len <- length(group_lengths)
-  
+
   table_index <- which(numbers == table_to_number(table))
   for(i in 1:len){
     if(table_index %in% actual_indices[[i]]){
@@ -1404,7 +1411,7 @@ lp_test <- function(table,
     base <- rep(0, nrow(A))
     k <- 1
     
-    while(suppressWarnings(any(unlist(current_actual_indices) != actual_indices[[index]]))){
+    while((suppressWarnings(any(unlist(current_actual_indices) != actual_indices[[index]]))) & k <= max_iter){
       if(show_progress){
         print(k)
         print(level)
@@ -1420,16 +1427,22 @@ lp_test <- function(table,
         
         level <- level - alpha / 2 ^ k
         old_status <- status
-        status[status] <- lp_poolbase(base,
-                                      col,
-                                      current_A,
-                                      level,
-                                      problem,
-                                      current_group_lengths,
-                                      current_fellows,
-                                      group_length_coefficients,
-                                      scaling,
-                                      current_B)
+        poolbase <- lp_poolbase(base,
+                                col,
+                                current_A,
+                                level,
+                                problem,
+                                current_group_lengths,
+                                current_fellows,
+                                group_length_coefficients,
+                                scaling,
+                                current_B)
+        if(is.null(poolbase)){
+          break
+        }
+        else{
+          status[status] <- poolbase
+        }
       }
       else{
         base <- base + A %*% status
@@ -1446,16 +1459,22 @@ lp_test <- function(table,
         
         level <- level + alpha / 2 ^ k
         old_status <- status
-        status[status] <- lp_poolbase(base,
-                                      col,
-                                      current_A,
-                                      level,
-                                      problem,
-                                      current_group_lengths,
-                                      current_fellows,
-                                      group_length_coefficients,
-                                      scaling,
-                                      current_B)
+        poolbase <- lp_poolbase(base,
+                                col,
+                                current_A,
+                                level,
+                                problem,
+                                current_group_lengths,
+                                current_fellows,
+                                group_length_coefficients,
+                                scaling,
+                                current_B)
+        if(is.null(poolbase)){
+          break
+        }
+        else{
+          status[status] <- poolbase
+        }
       }
       k <- k + 1
     }
@@ -2572,8 +2591,7 @@ power_matrix <- function(alpha, tables, p_arr, res = 100, show_progress = FALSE)
   n_row <- margins(tables[[1]][[1]], 1)
   rows <- length(n_row)
   col <- ncol(tables[[1]][[1]])
-  print(col)
-  
+
   exp_mat <- matrix(0, lenK, rows * col)
   K_arr <- rep(0, lenK)
   if(lenK > 0){
