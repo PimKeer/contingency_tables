@@ -1093,7 +1093,8 @@ lp_K <- function(n_row,
     
     params <- list(OutputFlag = as.integer(show_progress), 
                    PoolSearchMode = 2,
-                   PoolSolutions = n_row[1])
+                   PoolSolutions = n_row[1],
+                   WorkLimit = 1000)
     
     sol <- gurobi(model, params)
     lensolpool <- length(sol$pool)
@@ -1129,7 +1130,8 @@ lp_K <- function(n_row,
 
     params <- list(OutputFlag = as.integer(show_progress), 
                    PoolSearchMode = 2,
-                   PoolSolutions = n_row[1])
+                   PoolSolutions = n_row[1],
+                   WorkLimit = 1000)
     
     sol <- gurobi(model, params)
     lensolpool <- length(sol$pool)
@@ -1198,7 +1200,8 @@ lp_K <- function(n_row,
       model$rhs <- c(rep(0, N), alpha * rep(1,N))
     }
 
-    params <- list(OutputFlag = as.integer(show_progress))
+    params <- list(OutputFlag = as.integer(show_progress),
+                   WorkLimit = 1000)
     
     w <- gurobi(model, params)$x
   }
@@ -1258,7 +1261,8 @@ lp_poolbase <- function(base,
     
     params <- list(OutputFlag = 0, 
                    PoolSearchMode = 2,
-                   PoolSolutions = n_row[1])
+                   PoolSolutions = n_row[1],
+                   WorkLimit = 1000)
     
     sol <- gurobi(model, params)
     lensolpool <- length(sol$pool)
@@ -1292,7 +1296,8 @@ lp_poolbase <- function(base,
       model$rhs <- alpha * rep(1,N) - base
     }
     
-    params <- list(OutputFlag = 0)
+    params <- list(OutputFlag = 0,
+                   WorkLimit = 1000)
     
     w <- gurobi(model, params)$x
   }
@@ -1314,7 +1319,8 @@ lp_poolbase <- function(base,
       model$rhs <- c(rep(0, N), alpha * rep(1,N)) - base
     }
     
-    params <- list(OutputFlag = 0)
+    params <- list(OutputFlag = 0,
+                   WorkLimit = 1000)
     
     w <- gurobi(model, params)$x
   }
@@ -1844,7 +1850,8 @@ lp_solver <- function(n_row,
     
     params <- list(OutputFlag=1, 
                    PoolSearchMode = 2,
-                   PoolSolutions = n_row[1])
+                   PoolSolutions = n_row[1],
+                   WorkLimit = 1000)
     
     sol <- gurobi(model, params)
     lensolpool <- length(sol$pool)
@@ -2038,7 +2045,8 @@ lp_solver_2 <- function(n_row,
     
     params <- list(OutputFlag=1,
                    PoolSearchMode = 2,
-                   PoolSolutions = n_row[1])
+                   PoolSolutions = n_row[1],
+                   WorkLimit = 1000)
     
     # params <- list(OutputFlag=1)
     
@@ -2222,7 +2230,8 @@ lp_solver_3 <- function(n_row,
       model$obj <- c(rep(1,N), rep(0,len))
     }
     
-    params <- list(OutputFlag=0)
+    params <- list(OutputFlag=0,
+                   WorkLimit = 1000)
     
     solution <- gurobi(model)$x
     print(solution)
@@ -2293,7 +2302,8 @@ lp_solver_poolbase <- function(group_lengths,
       model$obj <- rep(1, len)
     }
     
-    params <- list(OutputFlag=0)
+    params <- list(OutputFlag=0,
+                   WorkLimit = 1000)
     
     # w <- gurobi(model)$x
     w <- gurobi(model, params)$x
