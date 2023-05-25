@@ -10,7 +10,11 @@ n_row_arr <- list(c(5,5),
 cols <- 2
 
 ## 3x2
+<<<<<<< HEAD
 
+=======
+  # 
+  >>>>>>> 8d217667b24fc22045eb91bef3812d134a0dde1a
 # n_row_arr <- list(c(5,5,5),
 #                   c(10,5,5), c(10,10,5), c(10,10,10),
 #                   c(20,5,5), c(20,10,5), c(20,20,5), c(20,10,10), c(20,20,10), c(20,20,20))
@@ -19,10 +23,8 @@ cols <- 2
 
 ## 2x3
 
-# n_row_arr <- list(c(5,5),
-#                   c(10,5), c(10,10),
-#                   c(20,5), c(20,10), c(20,20))
-# cols <- 3
+n_row_arr <- list(c(20,20))
+cols <- 3
 
 alpha_arr <- c(0.01,0.05,0.10)
 res <- 100
@@ -71,7 +73,7 @@ for(n_row in n_row_arr){
       df_name <- paste(df_name, ".xlsx", sep = "")
       
       power_mat <- as.matrix(read.xlsx(df_name, rowNames = TRUE))
-
+      
       # png_name <- paste("power",
       #                   as.integer(alpha * 100),
       #                   "row",
