@@ -1206,6 +1206,8 @@ lp_K <- function(n_row,
     w <- gurobi(model, params)$x
   }
   
+  w <- round(w)
+  
   if(auxiliary){
     if(problem == 3){
       return(list(w, A, B))
