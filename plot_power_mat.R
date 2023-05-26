@@ -19,10 +19,10 @@ cols <- 2
 
 ## 2x3
 
-n_row_arr <- list(c(20,20))
-cols <- 3
+# n_row_arr <- list(c(20,20))
+# cols <- 3
 
-alpha_arr <- c(0.01,0.05,0.10)
+alpha_arr <- c(0.01)
 res <- 100
 test_list <- list("asymp",
                   "fisher",
@@ -31,22 +31,28 @@ test_list <- list("asymp",
                   "vol_classes",
                   "ss",
                   "boschloo",
-                  "vol_ext")
-name_list <- list("PEARSON",
-                  "FISHER",
-                  "C S_P M",
-                  "C S_chi M",
-                  "C S_V M",
-                  "ET chi",
-                  "ET fisher",
-                  "ET vol")
+                  "vol_ext",
+                  "lp_1_sym",
+                  "lp_1_chisq",
+                  "lp_1_vol_classes",
+                  "lp_3_sym",
+                  "lp_3_chisq",
+                  "lp_3_vol_classes")
+# name_list <- list("PEARSON",
+#                   "FISHER",
+#                   "C S_P M",
+#                   "C S_chi M",
+#                   "C S_V M",
+#                   "ET chi",
+#                   "ET fisher",
+#                   "ET vol")
 
-# name_list <- list("LP1 S_P",
-#                   "LP1 S_chi",
-#                   "LP1 S_V",
-#                   "LP2 S_P",
-#                   "LP2 S_chi",
-#                   "LP2 S_V")
+name_list <- list("LP1 S_P",
+                  "LP1 S_chi",
+                  "LP1 S_V",
+                  "LP2 S_P",
+                  "LP2 S_chi",
+                  "LP2 S_V")
 
 theta_seq <- seq(0, 1, length.out = res + 1)
 col_array <- c("blue", "red", "green", "yellow", "purple", "orange", "brown", "pink")#, "turquoise", "plum", "grey")
@@ -67,26 +73,27 @@ for(n_row in n_row_arr){
                        type,
                        sep="_")
       df_name <- paste(df_name, ".xlsx", sep = "")
+      # print(df_name)
       
       power_mat <- as.matrix(read.xlsx(df_name, rowNames = TRUE))
       
-      # png_name <- paste("power",
-      #                   as.integer(alpha * 100),
-      #                   "row",
-      #                   paste(n_row, collapse = "_"),
-      #                   "col",
-      #                   cols,
-      #                   type,
-      #                   sep="_")
-      # png_name <- paste(png_name, ".png", sep = "")
-      # png(png_name, width = 609, height = 507)
-      # plot_power_matrix(power_mat)
-      # dev.off()
+      png_name <- paste("power",
+                        as.integer(alpha * 100),
+                        "row",
+                        paste(n_row, collapse = "_"),
+                        "col",
+                        cols,
+                        type,
+                        sep="_")
+      png_name <- paste(png_name, ".png", sep = "")
+      png(png_name, width = 609, height = 507)
+      plot_power_matrix(power_mat)
+      dev.off()
       
       size_list <- append(size_list, list(diag(power_mat)))
     }
     
-    spng_name <- paste("size_notlp",
+    spng_name <- paste("size",
                        as.integer(alpha * 100),
                        "row",
                        paste(n_row, collapse = "_"),
@@ -119,7 +126,7 @@ for(n_row in n_row_arr){
             lty = lty_array[i])
     }
     legend(x="topright",
-           inset = c(-0.52,0),
+           inset = c(-0.5,0), # 0.52 for not lp, 0.5 for lp
            legend=c("alpha", unlist(name_list)),
            col = c("black", col_array[(0:(length(test_list)-1))%%length(col_array)+1]),
            lty = c(1, lty_array[1:(length(test_list)+1)]),
