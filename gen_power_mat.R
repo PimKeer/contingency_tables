@@ -11,20 +11,27 @@ library(openxlsx)
 
 ## 3x2
 
-# n_row_arr <- list(c(20,20,5), c(20,20,20))
-# cols <- 2
+n_row_arr <- list(c(5,5,5),
+                  c(10,5,5), c(10,10,5), c(10,10,10),
+                  c(20,5,5), c(20,10,5), c(20,20,5), c(20,10,10), c(20,20,10), c(20,20,20))
+cols <- 2
 
 ## 2x3
 
-n_row_arr <- list(c(5,5),
-                  c(10,5), c(10,10),
-                  c(20,5), c(20,10)) #, c(20,20))
-cols <- 3
+# n_row_arr <- list(c(5,5),
+#                   c(10,5), c(10,10),
+#                   c(20,5), c(20,10)) #, c(20,20))
+# cols <- 3
 
-alpha_arr <- c(0.01,0.05,0.10)
+alpha_arr <- c(0.01)
 res <- 100
 theta_seq <- seq(0, 1, length.out = res + 1)
-test_list <- list("asymp")
+test_list <- list("lp_1_sym",
+                  "lp_1_chisq",
+                  "lp_1_vol_classes",
+                  "lp_3_sym",
+                  "lp_3_chisq",
+                  "lp_3_vol_classes")
 
 for(n_row in n_row_arr){
   tables <- gen_tables(n_row, cols)
@@ -62,7 +69,7 @@ for(n_row in n_row_arr){
                       auxiliary = FALSE,
                       group_length_coefficients = TRUE,
                       scaling = TRUE,
-                      show_progress = TRUE,
+                      show_progress = FALSE,
                       pre_B = NULL) * alpha / 2
       }
       else{
@@ -95,25 +102,25 @@ for(n_row in n_row_arr){
       writeData(pwb, "sheet1", p_arr_df, rowNames = TRUE)
       saveWorkbook(pwb, pdf_name, TRUE)
 
-      power_mat <- power_matrix(alpha, tables, p_arr, res)
-      power_df <- as.data.frame(power_mat)
-      colnames(power_df) <- theta_seq
-      rownames(power_df) <- theta_seq
-
-      df_name <- paste("power_mat",
-                       as.integer(alpha * 100),
-                       "row",
-                       paste(n_row, collapse = "_"),
-                       "col",
-                       cols,
-                       type,
-                       sep="_")
-      df_name <- paste(df_name, ".xlsx", sep = "")
-
-      wb <- createWorkbook()
-      addWorksheet(wb, "sheet1")
-      writeData(wb, "sheet1", power_df, rowNames = TRUE)
-      saveWorkbook(wb, df_name, TRUE)
+      # power_mat <- power_matrix(alpha, tables, p_arr, res)
+      # power_df <- as.data.frame(power_mat)
+      # colnames(power_df) <- theta_seq
+      # rownames(power_df) <- theta_seq
+      # 
+      # df_name <- paste("power_mat",
+      #                  as.integer(alpha * 100),
+      #                  "row",
+      #                  paste(n_row, collapse = "_"),
+      #                  "col",
+      #                  cols,
+      #                  type,
+      #                  sep="_")
+      # df_name <- paste(df_name, ".xlsx", sep = "")
+      # 
+      # wb <- createWorkbook()
+      # addWorksheet(wb, "sheet1")
+      # writeData(wb, "sheet1", power_df, rowNames = TRUE)
+      # saveWorkbook(wb, df_name, TRUE)
     }
   }
 }
