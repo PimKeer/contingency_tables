@@ -1,15 +1,10 @@
 source("functions.R")
 library(microbenchmark)
 
-k_arr <- 5
+k_arr <- 1:4
 n_arr <- 5 * k_arr
 col <- 2
-test_list <- list("lp_1_sym",
-                  "lp_1_chisq",
-                  "lp_1_vol_classes",
-                  "lp_3_sym",
-                  "lp_3_chisq",
-                  "lp_3_vol_classes")
+test_list <- list("chisq")
 
 t_list_list <- list()
 len_list <- list()
@@ -127,7 +122,7 @@ for(type in test_list){
                                               times = 1)$time * 1e-9)
       }
       
-      t_list <- append(t_list, list(t_arr + prep_time))
+      t_list <- append(t_list, list(t_arr))
       len_arr <- append(len_arr, length(t_arr))
     }
   }
