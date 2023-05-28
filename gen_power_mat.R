@@ -11,22 +11,30 @@ library(openxlsx)
 
 ## 3x2
 
-n_row_arr <- list(c(5,5,5),
-                  c(10,5,5), c(10,10,5), c(10,10,10),
-                  c(20,5,5), c(20,10,5), c(20,20,5), c(20,10,10), c(20,20,10), c(20,20,20))
-cols <- 2
+# n_row_arr <- list(c(5,5,5),
+#                   c(10,5,5), c(10,10,5), c(10,10,10),
+#                   c(20,5,5), c(20,10,5), c(20,20,5), c(20,10,10), c(20,20,10), c(20,20,20))
+# cols <- 2
 
 ## 2x3
 
-# n_row_arr <- list(c(5,5),
-#                   c(10,5), c(10,10),
-#                   c(20,5), c(20,10)) #, c(20,20))
+# n_row_arr <- list(c(20,10), c(20,20))
 # cols <- 3
+
+## 2x4
+
+n_row_arr <- list(c(20,10),c(20,20))
+cols <- 3
 
 alpha_arr <- c(0.01)
 res <- 100
 theta_seq <- seq(0, 1, length.out = res + 1)
-test_list <- list("lp_1_sym",
+test_list <- list("asymp",
+                  "fisher",
+                  "boschloo",
+                  "vol_ext",
+                  "ss",
+                  "lp_1_sym",
                   "lp_1_chisq",
                   "lp_1_vol_classes",
                   "lp_3_sym",
