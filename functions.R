@@ -188,6 +188,121 @@ find_extreme <- function(reduced){
 
 gen_tables <- function(n_row, col, list_numbers = TRUE, test = FALSE){
   rows <- length(n_row)
+  
+  if(rows == 2 & col == 2){
+    n <- n_row[1]
+    m <- n_row[2]
+    len <- (n + 1)*(m + 1)
+    table_list <- list()
+    a <- 1
+    for(i in 0:n){
+      for(j in 0:m){
+        table_list <- append(table_list, list(to_table(c(i,n-i,j,m-j),2,2)))
+        a <- a + 1
+      }
+    }
+    table_numbers <- rep(0, len)
+    for(i in 1:len){
+      table_numbers[i] <- table_to_number(table_list[[i]])
+    }
+    return(list(table_list), table_numbers)
+  }
+  
+  else if(rows == 3 & col == 2){
+    n <- n_row[1]
+    m <- n_row[2]
+    o <- n_row[3]
+    len <- (n + 1)*(m + 1)*(o + 1)
+    table_list <- list()
+    a <- 1
+    for(i in 0:n){
+      for(j in 0:m){
+        for(k in 0:o)
+          table_list <- append(table_list, list(to_table(c(i,n-i,j,m-j,k,o-k),3,2)))
+        a <- a + 1
+      }
+    }
+    table_numbers <- rep(0, len)
+    for(i in 1:len){
+      table_numbers[i] <- table_to_number(table_list[[i]])
+    }
+    return(list(table_list), table_numbers)
+  }
+  
+  else if(rows == 2 & col == 3){
+    n <- n_row[1]
+    m <- n_row[2]
+    table_list <- list()
+    for(i1 in 0:n){
+      for(i2 in 0:(n-i1)){
+        for(j1 in 0:m){
+          for(j2 in 0:(m-j1)){
+            table_list <- append(table_list, list(to_table(c(i1, i2, n - i1 - i2, j1, j2, m - j1 - j2), 2, 3)))
+          }
+        }
+      }
+    }
+    len <- length(table_list)
+    table_numbers <- rep(0, len)
+    for(i in 1:len){
+    table_numbers[i] <- table_to_number(table_list[[i]])
+    }
+    return(list(table_list), table_numbers)
+  }
+  
+  else{
+    rows_list <- list()
+    t1 <- Sys.time()
+    for(i in 1:rows){
+      row_list <- list()
+      loop(for(j in balls_in_boxes(n_row[i], col)){
+        row_list <- append(row_list, list(j))
+      })
+      rows_list <- append(rows_list, list(row_list))
+    }
+    t2 <- Sys.time()
+    table_matrix <- expand.grid(rows_list)
+    t3 <- Sys.time()
+    if(list_numbers){
+      table_list <- list()
+      if(test){
+        for(k in 1:nrow(table_matrix)){
+          table_list <- append(table_list, list(matrix(unlist(table_matrix[k, ]),rows,col,byrow = TRUE)))
+        }
+      }
+      else{
+        for(k in 1:nrow(table_matrix)){
+          # print(c(k, nrow(table_matrix)))
+          table_data <- c()
+          for(l in 1:rows){
+            table_data <- append(table_data, table_matrix[[k, l]])
+          }
+          table_list <- append(table_list,
+                               list(to_table(table_data,rows,col)))
+        }
+      }
+      
+      len <- length(table_list)
+      table_numbers <- c(0, len)
+      t4 <- Sys.time()
+      for(i in 1:len){
+        table_numbers[i] <- table_to_number(table_list[[i]])
+      }
+      t5 <- Sys.time()
+      # print(t2-t1)
+      # print(t3-t2)
+      # print(t4-t3)
+      # print(t5-t4)
+      return(list(table_list, table_numbers))
+    }
+    else{
+      return(table_matrix)
+    }
+  }
+}
+
+gen_tables_old <- function(n_row, col, list_numbers = TRUE, test = FALSE){
+  rows <- length(n_row)
   rows_list <- list()
   t1 <- Sys.time()
   for(i in 1:rows){
@@ -236,6 +351,19 @@ gen_tables <- function(n_row, col, list_numbers = TRUE, test = FALSE){
     return(table_matrix)
   }
 }
+
+n_row <- c(20,20,10)
+col <- 2
+
+t1 <- Sys.time()
+table1 <- gen_tables_old(n_row, col)
+t2 <- Sys.time()
+table2 <- gen_tables(n_row, col)
+t3 <- Sys.time()
+
+print(t2-t1)
+print(t3-t2)
+
 
 group_reduce <- function(tables, type = "sym", chisq_tol = 6, vol_tol = 6, fisher_tol = 6){
   numbers <- tables[[2]]
