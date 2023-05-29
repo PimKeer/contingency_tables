@@ -1,5 +1,5 @@
 library(openxlsx)
-time_df <- read.xlsx("all_time_comparisons_sample.xlsx")
+time_df <- read.xlsx("all_time_comparisons_sample_with_prelem.xlsx")
 row_time_df <- read.xlsx("all_time_comparisons_rows.xlsx")
 
 k_arr <- 1:5
@@ -35,6 +35,7 @@ name_list <- list("PEARSON",
                   "LP2 S_V")
 l_test <- length(test_list)
 
+m <- 1
 for(test in test_list){
   col_list <- c()
   for(k in k_arr){
@@ -42,8 +43,10 @@ for(test in test_list){
   }
   slice <- time_df[col_list]
   png(paste("time_boxplot_", test, ".png", sep = ""), width = 400, height = 400)
-  boxplot(slice[slice > 0, ], names = n_arr)
+  par(cex.main=1.5)
+  boxplot(slice[slice > 0, ], names = n_arr, yaxs = "i", ylim = c(0,1.1*max(slice)), main = name_list[[m]])
   dev.off()
+  m <- m + 1
 }
 
 for(k in k_arr){
@@ -53,7 +56,12 @@ for(k in k_arr){
   }
   slice <- time_df[col_list]
   png(paste("time_boxplot_per_n_", 5*k, ".png", sep = ""), width = 1200, height = 400)
-  boxplot(log(slice[slice > 0, ],base=10), names = name_list, yaxs = "i", ylim = range(log(slice, base=10)))
+  par(mar=c(8.1, 4.1, 4.1, 4.1), xpd=TRUE, cex.axis=1.5)
+  boxplot(slice[slice > 0, ], names = name_list, yaxs = "i", ylim = c(0,1.1*max(slice)), las=2)
+  dev.off()
+  png(paste("time_boxplot_log_per_n_", 5*k, ".png", sep = ""), width = 1200, height = 400)
+  par(mar=c(8.1, 4.1, 4.1, 4.1), xpd=TRUE, cex.axis=1.5)
+  boxplot(log(slice[slice > 0, ],base=10), names = name_list, ylim = range(log(slice, base=10)), las=2)
   dev.off()
 }
 
@@ -79,10 +87,10 @@ for(n in list(2,3,4)){
     col_list <- append(col_list, paste(test, n, sep=""))
   }
   slice <- row_time_df[col_list]
-  png(paste("time_boxplot_rows_", n, ".png", sep = ""), width = 1200, height = 400)
+  # png(paste("time_boxplot_rows_", n, ".png", sep = ""), width = 1200, height = 400)
   boxplot(slice[slice > 0, ],base=10, names = name_list, yaxs = "i", ylim = range(slice, base=10))
   # boxplot(log(slice[slice > 0, ],base=10), names = name_list, yaxs = "i", ylim = range(log(slice, base=10)))
-  dev.off()
+  # dev.off()
 }
 
 
