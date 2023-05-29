@@ -22,7 +22,6 @@ test_list <- list("asymp",
 name_list <- list("PEARSON",
                   "FISHER",
                   "C S_P M",
-                  "C S_chi M",
                   "C S_V M",
                   "ET chi",
                   "ET fisher",
@@ -68,7 +67,6 @@ for(k in k_arr){
 test_list <- list("asymp",
                   "fisher",
                   "sym",
-                  "chisq",
                   "vol_classes",
                   "ss",
                   "boschloo",
@@ -80,18 +78,24 @@ test_list <- list("asymp",
                   "lp_3_chisq",
                   "lp_3_vol_classes")
 
-for(n in list(2,3,4)){
+for(n in list(5)){
   # n_str <- paste("c(", paste(n, collapse=",."), ")", sep="")
   col_list <- c()
   for(test in test_list){
     col_list <- append(col_list, paste(test, n, sep=""))
   }
   slice <- row_time_df[col_list]
-  # png(paste("time_boxplot_rows_", n, ".png", sep = ""), width = 1200, height = 400)
-  boxplot(slice[slice > 0, ],base=10, names = name_list, yaxs = "i", ylim = range(slice, base=10))
-  # boxplot(log(slice[slice > 0, ],base=10), names = name_list, yaxs = "i", ylim = range(log(slice, base=10)))
-  # dev.off()
+  png(paste("time_boxplot_no_chisq_rows_", n, ".png", sep = ""), width = 1200, height = 400)
+  par(mar=c(8.1, 4.1, 4.1, 4.1), xpd=TRUE, cex.axis=1.5)
+  boxplot(slice[slice > 0, ], names = name_list, yaxs = "i", ylim = c(0,1.1*max(slice)), las=2)
+  dev.off()
+  
+  png(paste("time_boxplot_no_chisq_log_rows_", n, ".png", sep = ""), width = 1200, height = 400)
+  par(mar=c(8.1, 4.1, 4.1, 4.1), xpd=TRUE, cex.axis=1.5)
+  boxplot(log(slice[slice > 0, ],base=10), names = name_list, ylim = range(log(slice, base=10)), las=2)
+  dev.off()
 }
+
 
 
 # 
