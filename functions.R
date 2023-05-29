@@ -205,7 +205,7 @@ gen_tables <- function(n_row, col, list_numbers = TRUE, test = FALSE){
     for(i in 1:len){
       table_numbers[i] <- table_to_number(table_list[[i]])
     }
-    return(list(table_list), table_numbers)
+    return(list(table_list, table_numbers))
   }
   
   else if(rows == 3 & col == 2){
@@ -226,7 +226,7 @@ gen_tables <- function(n_row, col, list_numbers = TRUE, test = FALSE){
     for(i in 1:len){
       table_numbers[i] <- table_to_number(table_list[[i]])
     }
-    return(list(table_list), table_numbers)
+    return(list(table_list, table_numbers))
   }
   
   else if(rows == 2 & col == 3){
@@ -247,7 +247,7 @@ gen_tables <- function(n_row, col, list_numbers = TRUE, test = FALSE){
     for(i in 1:len){
     table_numbers[i] <- table_to_number(table_list[[i]])
     }
-    return(list(table_list), table_numbers)
+    return(list(table_list, table_numbers))
   }
   
   else{
@@ -351,19 +351,6 @@ gen_tables_old <- function(n_row, col, list_numbers = TRUE, test = FALSE){
     return(table_matrix)
   }
 }
-
-n_row <- c(20,20,10)
-col <- 2
-
-t1 <- Sys.time()
-table1 <- gen_tables_old(n_row, col)
-t2 <- Sys.time()
-table2 <- gen_tables(n_row, col)
-t3 <- Sys.time()
-
-print(t2-t1)
-print(t3-t2)
-
 
 group_reduce <- function(tables, type = "sym", chisq_tol = 6, vol_tol = 6, fisher_tol = 6){
   numbers <- tables[[2]]

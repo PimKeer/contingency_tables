@@ -4,24 +4,28 @@ library(microbenchmark)
 set.seed(1)
 M <- 30
 
+
+gen_list_2x2 <- gen_list
+reduce_list_2x2 <- reduce_list
 # k_arr <- 1:4
-n_arr <- list(c(25,25))
-col <- 2
-# test_list <- list("asymp",
-#                   "fisher",
-#                   "boschloo",
-#                   "sym",
-#                   "chisq",
-#                   "ss",
-#                   "vol_classes",
-#                   "vol_ext",
-#                   "lp_1_sym",
-#                   "lp_1_vol_classes",
-#                   "lp_1_chisq",
-#                   "lp_3_sym",
-#                   "lp_3_vol_classes",
-#                   "lp_3_chisq")
-test_list <- list("lp_1_vol_classes")
+n_row <- c(5,5)
+n_arr <- list(c(5,5))
+col_arr <- c(3)
+test_list <- list("asymp",
+                  "fisher",
+                  "boschloo",
+                  "sym",
+                  "chisq",
+                  "ss",
+                  "vol_classes",
+                  "vol_ext",
+                  "lp_1_sym",
+                  "lp_1_vol_classes",
+                  "lp_1_chisq",
+                  "lp_3_sym",
+                  "lp_3_vol_classes",
+                  "lp_3_chisq")
+# test_list <- list("lp_1_vol_classes")
 # 
 # for(type in c("sym", "vol_classes", "chisq")){
 #   for(n in c(5,10,15,20,25)){
@@ -32,33 +36,140 @@ test_list <- list("lp_1_vol_classes")
 #   }
 # }
 
-# t_list_list <- list()
-# len_list <- list()
-# gen_list <- c()
-# reduce_list <- list()
+t_list_list <- list()
+len_list <- list()
+gen_list <- c()
+reduce_list <- list()
 
-microbenchmark(supremum_ordering(c(25,25),
-                                 2,
-                                 level = 1,
-                                 type = "vol_ext",
-                                 convex = TRUE,
-                                 N_order = 50,
-                                 N_find = 100,
-                                 pre_tables = tables,
-                                 pre_group_reduced = group_reduced,
-                                 show_progress = FALSE,
-                                 until_table = tables[[1]][[307]]),
-               times = 1)$time * 1e-9
+# microbenchmark(supremum_ordering(c(25,25),
+#                                  2,
+#                                  level = 1,
+#                                  type = "vol_ext",
+#                                  convex = TRUE,
+#                                  N_order = 50,
+#                                  N_find = 100,
+#                                  pre_tables = tables,
+#                                  pre_group_reduced = group_reduced,
+#                                  show_progress = FALSE,
+#                                  until_table = tables[[1]][[307]]),
+#                times = 1)$time * 1e-9
+# 
+# microbenchmark(fisher.test(tables[[1]][[307]]), times = 1)$time * 1e-9
 
-microbenchmark(fisher.test(tables[[1]][[307]]), times = 1)$time * 1e-9
-
-for(n_row in n_arr){
+for(col in col_arr){
   t1 <- Sys.time()
   tables <- gen_tables(n_row, col)
   t2 <- Sys.time()
   gen_list <- append(gen_list, as.numeric(t2-t1, units = "secs"))
   select <- sample(1:length(tables[[1]]),M)
-  print(select[8])
+
+  selection <- tables[[1]][select]
+  
+  t_list <- list()
+  len_arr <- c()
+  reduce_arr <- c()
+  
+  for(type in test_list){
+    print(paste(n_row, type))
+    t_arr <- c()
+    
+    if(type == "fisher"){
+      t_arr <- c()
+      
+      for(table in selection){
+        t_arr <- append(t_arr, microbenchmark(fisher.test(table), times = 1)$time * 1e-9)
+      }
+      
+      t_list <- append(t_list, list(t_arr))
+      len_arr <- append(len_arr, length(t_arr))
+    }
+    
+    else if(type == "asymp"){
+      t_arr <- c()
+      
+      for(table in selection){
+        t_arr <- append(t_arr, microbenchmark(chisq.test(table), times = 1)$time * 1e-9)
+      }
+      
+      t_list <- append(t_list, list(t_arr))
+      len_arr <- append(len_arr, length(t_arr))
+    }
+    
+    else if(substr(type, 1, 2) == "lp"){
+      str_list <- strsplit(type, "_")[[1]]
+      if(length(str_list) == 3){
+        problem <- str_list[2]
+        test <- str_list[3]
+      }
+      else if(length(str_list) == 4){
+        problem <- str_list[2]
+        test <- paste(str_list[3], "_", str_list[4], sep = "")
+      }
+      
+      t3 <- Sys.time()
+      group_reduced <- group_reduce(tables, test)
+      t4 <- Sys.time()
+      reduce_arr <- append(reduce_arr, as.numeric(t4-t3, units = "secs"))
+      
+      for(i in 1:M){
+        # print(c(i, M))
+        t_arr <- append(t_arr, microbenchmark(lp_test(selection[[i]],
+                                                      problem,
+                                                      alpha = 1,
+                                                      N = 100,
+                                                      type = test,
+                                                      pre_tables = tables,
+                                                      pre_group_reduced = group_reduced,
+                                                      show_progress = FALSE,
+                                                      group_length_coefficients = TRUE,
+                                                      scaling = TRUE),
+                                              times = 1)$time * 1e-9)
+      }
+      
+      t_list <- append(t_list, list(t_arr))
+      len_arr <- append(len_arr, length(t_arr))
+    }
+    
+    else{
+      t3 <- Sys.time()
+      group_reduced <- group_reduce(tables, type)
+      t4 <- Sys.time()
+      reduce_arr <- append(reduce_arr, as.numeric(t4-t3, units = "secs"))
+      print("done")
+      
+      for(i in 1:M){
+        t_arr <- append(t_arr, microbenchmark(supremum_ordering(n_row,
+                                                                col,
+                                                                level = 1,
+                                                                type = type,
+                                                                convex = TRUE,
+                                                                N_order = 50,
+                                                                N_find = 100,
+                                                                pre_tables = tables,
+                                                                pre_group_reduced = group_reduced,
+                                                                show_progress = FALSE,
+                                                                until_table = selection[[i]]),
+                                              times = 1)$time * 1e-9)
+      }
+      
+      t_list <- append(t_list, list(t_arr))
+      len_arr <- append(len_arr, length(t_arr))
+    }
+    
+  }
+  t_list_list <- append(t_list_list, list(t_list))
+  len_list <- append(len_list, list(len_arr))
+  reduce_list <- append(reduce_list, list(reduce_arr))
+}
+
+
+# for(n_row in n_arr){
+#   t1 <- Sys.time()
+#   tables <- gen_tables_old(n_row, col)
+#   t2 <- Sys.time()
+#   gen_list <- append(gen_list, as.numeric(t2-t1, units = "secs"))
+#   select <- sample(1:length(tables[[1]]),M)
+#   print(select[8])
 # 
 #   selection <- tables[[1]][select]
 # 
@@ -102,7 +213,7 @@ for(n_row in n_arr){
 #         problem <- str_list[2]
 #         test <- paste(str_list[3], "_", str_list[4], sep = "")
 #       }
-#       
+# 
 #       t3 <- Sys.time()
 #       group_reduced <- group_reduce(tables, test)
 #       t4 <- Sys.time()
@@ -133,7 +244,7 @@ for(n_row in n_arr){
 #       t4 <- Sys.time()
 #       reduce_arr <- append(reduce_arr, as.numeric(t4-t3, units = "secs"))
 #       print("done")
-#       
+# 
 #       for(i in 1:M){
 #         t_arr <- append(t_arr, microbenchmark(supremum_ordering(n_row,
 #                                                                 col,
@@ -157,11 +268,11 @@ for(n_row in n_arr){
 #   t_list_list <- append(t_list_list, list(t_list))
 #   len_list <- append(len_list, list(len_arr))
 #   reduce_list <- append(reduce_list, list(reduce_arr))
-}
+# }
 
 max_len <- max(unlist(len_list))
 
-n_arr <- c("1*5","2*5","3*5","4*5","5*5")
+n_arr <- c("3")#,"4")
 
 time_df <- data.frame()
 for(i in 1:length(n_arr)){
