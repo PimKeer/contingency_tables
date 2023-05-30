@@ -13,9 +13,9 @@ mean_group_size <- function(n){
   }
 }
 
-k_arr <- 1:10
+k_arr <- 1:30
 n_arr <- 5 * k_arr
-col <- 3
+col <- 2
 # 
 # mean_t_reduce_22 <- mean_t_reduce_arr
 # sd_t_reduce_22 <- sd_t_reduce_arr
@@ -75,14 +75,9 @@ arrows(o_arr,
        col="black")
 lines(o_arr,fitted(o_fit))
 
-o_arr2 <- o_arr ^ 2
-o_reduce_fit <- lm(mean_t_reduce_arr ~ o_arr2 + o_arr + 0)
-summary(o_reduce_fit)
-
-
 plot(o_arr,
-     mean_t_reduce_arr,
-     ylim = range(c(0,mean_t_reduce_arr + 2*sd_t_reduce_arr)),
+     mean_t_table_arr,
+     ylim = range(c(0,mean_t_table_arr + 2*sd_t_table_arr)),
      # xlim = c(0,25000),
      pch=19,
      yaxs="i",
@@ -93,14 +88,230 @@ plot(o_arr,
      col="black",
      log = "")
 arrows(o_arr,
+       mean_t_table_arr - sd_t_table_arr,
+       o_arr,
+       mean_t_table_arr + sd_t_table_arr,
+       length=0.05,
+       angle=90,
+       code=3,
+       col="black")
+
+################################################################################
+
+seq_fitted <- function(fit, range){
+  x <- seq(min(range),max(range),length.out=10000)
+  y <- fit$coefficients[[1]] * x ^ 2 + fit$coefficients[[2]] * x
+  return(list(x,y))
+}
+
+################################################################################
+
+o_arr2 <- o_arr ^ 2
+o_reduce_fit <- lm(mean_t_reduce_arr ~ o_arr2 + o_arr + 0)
+summary(o_reduce_fit)
+
+png("reduce_time_2x2.png",width=400,height=400 )
+plot(o_arr,
+     mean_t_reduce_arr,
+     # ylim = c(0.5*min(mean_t_reduce_total),1.5*max(mean_t_reduce_total)),
+     # xlim = range(o_total),
+     ylim = c(0,1.1*max(mean_t_reduce_arr)),
+     xlim = c(0,25000),
+     pch=19,
+     yaxs="i",
+     xaxs="i",
+     # xaxt="n",
+     xlab="",
+     ylab="",
+     col="blue",
+     log = "")
+arrows(o_arr,
        mean_t_reduce_arr - sd_t_reduce_arr,
        o_arr,
        mean_t_reduce_arr + sd_t_reduce_arr,
        length=0.05,
        angle=90,
        code=3,
-       col="black")
-lines(o_arr,fitted(o_reduce_fit))
+       col="blue")
+lines(seq_fitted(o_reduce_fit, o_arr)[[1]],seq_fitted(o_reduce_fit, o_arr)[[2]],col="blue")
+dev.off()
+
+o_arrA <- c(216,	1331,	4096	,9261	,17576,	29791,	46656,	68921,	97336	,132651)
+mean_t_reduce_arrA <- c(0.05136287,	0.34053379,	1.23659744,	3.35441830,	7.64184585,	15.13043084,	29.87769633,	53.59769032,	95.92711510,	170.05364747)
+sd_t_reduce_arrA <- c(0.003938272,	0.010085745,	0.020517199	,0.102630535,	0.487556882	,0.126017774,	0.568651081	,0.146579650,	0.791726119,	4.768220764)
+
+o_arrA2 <- o_arrA ^ 2
+o_reduceA_fit <- lm(mean_t_reduce_arrA ~ o_arrA2 + o_arrA + 0)
+summary(o_reduceA_fit)
+
+png("reduce_time_3x2.png",width=400,height=400 )
+plot(o_arrA,
+       mean_t_reduce_arrA,
+       # ylim = c(0,1.1*max(mean_t_reduce_arrB)),
+       # xlim = c(0,250000),
+       ylim = c(0,1.1*max(mean_t_reduce_arrA)),
+       xlim = c(0,150000),
+       pch=19,
+       yaxs="i",
+       xaxs="i",
+       xaxt="n",
+       xlab="",
+       ylab="",
+       col="red",
+       log = "")
+arrows(o_arrA,
+       mean_t_reduce_arrA - sd_t_reduce_arrA,
+       o_arrA,
+       mean_t_reduce_arrA + sd_t_reduce_arrA,
+       length=0.05,
+       angle=90,
+       code=3,
+       col="red")
+axis(1, at=c(0,30000,60000,90000,120000,150000))
+lines(seq_fitted(o_reduceA_fit, o_arrA)[[1]],seq_fitted(o_reduceA_fit, o_arrA)[[2]],col="red")
+dev.off()
+
+
+o_arrB <- c(441	,4356,	18496,	53361,	123201,	246016)
+mean_t_reduce_arrB <- c(0.1099112,	1.4928679,	9.9462265,	45.4755577,	182.6847495,	615.5462651)
+sd_t_reduce_arrB <- c(0.007529506,	0.015440163,	0.194603954,	0.313854777,	4.435168903,	9.424563927)
+
+o_arrB2 <- o_arrB ^ 2
+o_reduceB_fit <- lm(mean_t_reduce_arrB ~ o_arrB2 + o_arrB + 0)
+summary(o_reduceB_fit)
+
+png("reduce_time_2x3.png",width=400,height=400 )
+
+plot(o_arrB,
+       mean_t_reduce_arrB,
+       # ylim = c(0,1.1*max(mean_t_reduce_arrB)),
+       # xlim = c(0,250000),
+       ylim = c(0,1.1*max(mean_t_reduce_arrB)),
+       xlim = c(0,250000),
+       pch=19,
+       yaxs="i",
+       xaxs="i",
+       # xaxt="n",
+       xlab="",
+       ylab="",
+       col="green",
+       log = "")
+arrows(o_arrB,
+       mean_t_reduce_arrB - sd_t_reduce_arrB,
+       o_arrB,
+       mean_t_reduce_arrB + sd_t_reduce_arrB,
+       length=0.05,
+       angle=90,
+       code=3,
+       col="green")
+lines(seq_fitted(o_reduceB_fit, o_arrB)[[1]],seq_fitted(o_reduceB_fit, o_arrB)[[2]],col="green")
+dev.off()
+
+o_total <- sort(c(o_arr, o_arrA, o_arrB))
+mean_t_reduce_total <- c(mean_t_reduce_arr, mean_t_reduce_arrA, mean_t_reduce_arrB)[order(c(o_arr, o_arrA, o_arrB))]
+
+o_total2 <- o_total ^ 2
+o_total_reduce_fit <- lm(mean_t_reduce_total ~ o_total2 + o_total + 0)
+summary(o_total_reduce_fit)
+lines(seq_fitted(o_total_reduce_fit, o_total)[[1]],seq_fitted(o_total_reduce_fit, o_total)[[2]],col="black")
+
+####################
+
+o_arr2 <- o_arr ^ 2
+o_reduce_fit <- lm(mean_t_reduce_arr ~ o_arr2 + o_arr + 0)
+summary(o_reduce_fit)
+
+png("reduce_time_all.png")
+plot(o_arr,
+     mean_t_reduce_arr,
+     ylim = c(0*min(mean_t_reduce_total),1.1*max(mean_t_reduce_total)),
+     xlim = c(0,250000),
+     pch=19,
+     yaxs="i",
+     xaxs="i",
+     # xaxt="n",
+     xlab="",
+     ylab="",
+     col="blue",
+     log = "")
+arrows(o_arr,
+       mean_t_reduce_arr - sd_t_reduce_arr,
+       o_arr,
+       mean_t_reduce_arr + sd_t_reduce_arr,
+       length=0.05,
+       angle=90,
+       code=3,
+       col="blue")
+lines(seq_fitted(o_reduce_fit, o_arr)[[1]],seq_fitted(o_reduce_fit, o_arr)[[2]],col="blue")
+
+o_arrA <- c(216,	1331,	4096	,9261	,17576,	29791,	46656,	68921,	97336	,132651)
+mean_t_reduce_arrA <- c(0.05136287,	0.34053379,	1.23659744,	3.35441830,	7.64184585,	15.13043084,	29.87769633,	53.59769032,	95.92711510,	170.05364747)
+sd_t_reduce_arrA <- c(0.003938272,	0.010085745,	0.020517199	,0.102630535,	0.487556882	,0.126017774,	0.568651081	,0.146579650,	0.791726119,	4.768220764)
+
+o_arrA2 <- o_arrA ^ 2
+o_reduceA_fit <- lm(mean_t_reduce_arrA ~ o_arrA2 + o_arrA + 0)
+summary(o_reduceA_fit)
+
+points(o_arrA,
+     mean_t_reduce_arrA,
+     # ylim = c(0,1.1*max(mean_t_reduce_arrB)),
+     # xlim = c(0,250000),
+     pch=19,
+     yaxs="i",
+     # xaxs="i",
+     # xaxt="n",
+     xlab="",
+     ylab="",
+     col="red",
+     log = "")
+arrows(o_arrA,
+       mean_t_reduce_arrA - sd_t_reduce_arrA,
+       o_arrA,
+       mean_t_reduce_arrA + sd_t_reduce_arrA,
+       length=0.05,
+       angle=90,
+       code=3,
+       col="red")
+lines(seq_fitted(o_reduceA_fit, o_arrA)[[1]],seq_fitted(o_reduceA_fit, o_arrA)[[2]],col="red")
+
+o_arrB <- c(441	,4356,	18496,	53361,	123201,	246016)
+mean_t_reduce_arrB <- c(0.1099112,	1.4928679,	9.9462265,	45.4755577,	182.6847495,	615.5462651)
+sd_t_reduce_arrB <- c(0.007529506,	0.015440163,	0.194603954,	0.313854777,	4.435168903,	9.424563927)
+
+o_arrB2 <- o_arrB ^ 2
+o_reduceB_fit <- lm(mean_t_reduce_arrB ~ o_arrB2 + o_arrB + 0)
+summary(o_reduceB_fit)
+
+points(o_arrB,
+       mean_t_reduce_arrB,
+       # ylim = c(0,1.1*max(mean_t_reduce_arrB)),
+       # xlim = c(0,250000),
+       pch=19,
+       yaxs="i",
+       # xaxs="i",
+       # xaxt="n",
+       xlab="",
+       ylab="",
+       col="green",
+       log = "")
+arrows(o_arrB,
+       mean_t_reduce_arrB - sd_t_reduce_arrB,
+       o_arrB,
+       mean_t_reduce_arrB + sd_t_reduce_arrB,
+       length=0.05,
+       angle=90,
+       code=3,
+       col="green")
+lines(seq_fitted(o_reduceB_fit, o_arrB)[[1]],seq_fitted(o_reduceB_fit, o_arrB)[[2]],col="green")
+
+o_total <- sort(c(o_arr, o_arrA, o_arrB))
+mean_t_reduce_total <- c(mean_t_reduce_arr, mean_t_reduce_arrA, mean_t_reduce_arrB)[order(c(o_arr, o_arrA, o_arrB))]
+
+o_total2 <- o_total ^ 2
+o_total_reduce_fit <- lm(mean_t_reduce_total ~ o_total2 + o_total + 0)
+summary(o_total_reduce_fit)
+lines(seq_fitted(o_total_reduce_fit, o_total)[[1]],seq_fitted(o_total_reduce_fit, o_total)[[2]],col="black")
+dev.off()
 # 
 # 
 # n_arr2 <- n_arr ^ 2
