@@ -111,7 +111,7 @@ plot(theta_arr[-1],
 lines(theta_arr, CR_arr)
 # lines(theta_arr, RMCR_arr, lty = 3)
 
-# BASED ON PARAMETRISATION BY LITTLE
+# BASED ON PARAMETRISATION BY LITTLE (YIELDS OF COURSE THE SAME RESULTS)
 
 n1 <- 34
 n2 <- 30

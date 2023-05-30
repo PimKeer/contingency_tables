@@ -2,7 +2,7 @@
 library(openxlsx)
 
 ## 2x2
-#
+# 
 # n_row_arr <- list(c(5,5),
 #                   c(10,5), c(10,10),
 #                   c(20,5), c(20,10), c(20,20),
@@ -11,34 +11,42 @@ library(openxlsx)
 # res <- 100
 
 ## 3x2
-#
+# 
 # n_row_arr <- list(c(5,5,5),
 #                   c(10,5,5), c(10,10,5), c(10,10,10),
 #                   c(20,5,5), c(20,10,5), c(20,20,5), c(20,10,10), c(20,20,10), c(20,20,20))
-# n_row_arr <- list(c(20,10,10), c(20,20,10), c(20,20,20))
+# # n_row_arr <- list(c(20,10,10), c(20,20,10), c(20,20,20))
+# rows <- 3
 # cols <- 2
 # res <- 10
 
 ## 2x3
+# 
+n_row_arr <- list(c(5,5), c(10,5), c(10,10), c(20,5))
+rows <- 2
+cols <- 3
+res <- 10
 
-# n_row_arr <- list(c(20,10), c(20,20))
+# n_row_arr <- list(c(5,5,5))
+# rows <- 3
 # cols <- 3
-# res <- 10
+# res <- 5
 
 # n_row_arr <- list(c(5,5))
+# rows <- 2
 # cols <- 4
 # res <- 5
 
-n_row_arr <- list(c(5,5))
-rows <- 2
-cols <- 4
-res <- 10
+# n_row_arr <- list(c(5,5),c(10,5),c(10,10),c(20,5),c(20,10),c(20,20))
+# rows <- 2
+# cols <- 2
+# res <- 100
 
 theta_seq <- seq(0, 1, length.out = res + 1)
 alpha <- 0.01
 test_list <- list("asymp",
                   "fisher",
-                  "chisq",
+                  "sym",
                   "vol_classes",
                   "ss",
                   "boschloo",
@@ -53,7 +61,6 @@ test_list <- list("asymp",
 name_list <- list("PEARSON",
                   "FISHER",
                   "C S_P M",
-                  "C S_chi M",
                   "C S_V M",
                   "ET chi",
                   "ET fisher",
@@ -105,30 +112,70 @@ if(rows == 2 & cols == 2){
         filtered_power_diff <- power_diff[!is.na(power_diff)]
         total_thetas <- length(filtered_power_diff)
         
+        if(all(is.na(c(power_arr1)))){
+          print("TEST")
+          power_arr1 <- array(0, rep(res + 1, rows * (cols - 1)))
+        }
+        else if(all(is.na(c(power_arr2)))){
+          print("TEST")
+          power_arr2 <- array(0, rep(res + 1, rows * (cols - 1)))
+        }
+        
+        # print(c(power_arr2))
+        
+        power_diff <- c(power_arr1 - power_arr2)
+        filtered_power_diff <- power_diff[!is.na(power_diff)]
+        total_thetas <- length(filtered_power_diff)
+        # print(filtered_power_diff)
+        
         if(all(c(filtered_power_diff) == 0)){
           print("EQUAL")
           row_arr <- append(row_arr, "=")
-        }
-        else{
-          positive_thetas <- sum(filtered_power_diff > 0)
-          integral <- sum(filtered_power_diff) / res ^ cols
-          print(c(n_row, test_list[[i]], test_list[[j]]))
+        } else{
+          positive_thetas <- sum(filtered_power_diff >= 1e-12)
+          integral <- sum(filtered_power_diff) / res ^ (rows * (cols - 1))
           
           if(positive_thetas == 0){
             row_arr <- append(row_arr, paste("<", round(integral,4), sep = " "))
-            print("<")
+            print(paste("<", round(integral,4), sep = " "))
           }
           else if(positive_thetas == total_thetas){
             row_arr <- append(row_arr, paste(">", round(integral,4), sep = " "))
-            print(">")
+            print(paste(">", round(integral,4), sep = " "))
           }
           else{
             row_arr <- append(row_arr, paste(round(positive_thetas/total_thetas,4), round(integral,4), sep = " "))
+            print(paste(round(positive_thetas/total_thetas,4), round(integral,4)))
           }
           
-          # print(positive_thetas/total_thetas)
-          print(c(positive_thetas/total_thetas, integral))
         }
+        
+        
+        # 
+        # if(all(c(filtered_power_diff) == 0)){
+        #   print("EQUAL")
+        #   row_arr <- append(row_arr, "=")
+        # } 
+        # else{
+        #   positive_thetas <- sum(filtered_power_diff > 0)
+        #   integral <- sum(filtered_power_diff) / res ^ cols
+        #   print(c(n_row, test_list[[i]], test_list[[j]]))
+        #   
+        #   if(positive_thetas == 0){
+        #     row_arr <- append(row_arr, paste("<", round(integral,4), sep = " "))
+        #     print("<")
+        #   }
+        #   else if(positive_thetas == total_thetas){
+        #     row_arr <- append(row_arr, paste(">", round(integral,4), sep = " "))
+        #     print(">")
+        #   }
+        #   else{
+        #     row_arr <- append(row_arr, paste(round(positive_thetas/total_thetas,4), round(integral,4), sep = " "))
+        #   }
+        #   
+        #   # print(positive_thetas/total_thetas)
+        #   print(c(positive_thetas/total_thetas, integral))
+        # }
       }
       comp_mat[i, (i+1):len] <- row_arr
     }
@@ -136,7 +183,7 @@ if(rows == 2 & cols == 2){
     colnames(comp_df) <- name_list
     rownames(comp_df) <- name_list
     
-    df_name <- paste("power_comp",
+    df_name <- paste("power_comp_new",
                      as.integer(alpha * 100),
                      "row",
                      paste(n_row, collapse = "_"),
@@ -363,30 +410,40 @@ if(rows == 2 & cols == 2){
             }
           }
         }
+        if(all(is.na(c(power_arr1)))){
+          power_arr1 <- array(0, rep(res + 1, rows * (cols - 1)))
+        }
+        else if(all(is.na(c(power_arr2)))){
+          power_arr2 <- array(0, rep(res + 1, rows * (cols - 1)))
+        }
         
+        # print(c(power_arr2))
         
-        power_diff <- c(-power_arr2)
+        power_diff <- c(power_arr1 - power_arr2)
         filtered_power_diff <- power_diff[!is.na(power_diff)]
         total_thetas <- length(filtered_power_diff)
+        # print(filtered_power_diff)
         
         if(all(c(filtered_power_diff) == 0)){
           print("EQUAL")
           row_arr <- append(row_arr, "=")
         } else{
-          positive_thetas <- sum(filtered_power_diff > 0)
-          integral <- sum(filtered_power_diff) / res ^ cols
+          positive_thetas <- sum(filtered_power_diff >= 1e-12)
+          integral <- sum(filtered_power_diff) / res ^ (rows * (cols - 1))
           
           if(positive_thetas == 0){
             row_arr <- append(row_arr, paste("<", round(integral,4), sep = " "))
+            print(paste("<", round(integral,4), sep = " "))
           }
           else if(positive_thetas == total_thetas){
             row_arr <- append(row_arr, paste(">", round(integral,4), sep = " "))
+            print(paste(">", round(integral,4), sep = " "))
           }
           else{
             row_arr <- append(row_arr, paste(round(positive_thetas/total_thetas,4), round(integral,4), sep = " "))
+            print(paste(round(positive_thetas/total_thetas,4), round(integral,4)))
           }
           
-          print(c(positive_thetas/total_thetas, integral))
         }
       }
       comp_mat[i, (i+1):len] <- row_arr
@@ -395,7 +452,7 @@ if(rows == 2 & cols == 2){
     colnames(comp_df) <- name_list
     rownames(comp_df) <- name_list
     
-    df_name <- paste("power_comp",
+    df_name <- paste("power_comp_new",
                      as.integer(alpha * 100),
                      "row",
                      paste(n_row, collapse = "_"),
@@ -407,7 +464,7 @@ if(rows == 2 & cols == 2){
     wb <- createWorkbook()
     addWorksheet(wb, "sheet1")
     writeData(wb, "sheet1", comp_df, rowNames = TRUE)
-    saveWorkbook(wb, df_name, TRUE)  
+    saveWorkbook(wb, df_name, TRUE)
   }
 }  
 
