@@ -46,55 +46,55 @@ for(n in n_arr){
   o_arr <- append(o_arr, O)
   t_reduce_theoretical_arr <- append(t_reduce_theoretical_arr, O ^ 2 / (2 * mean_group_size(n)) + O / 2)
 }
-
-table_normaliser <- t_table_arr[length(n_arr)] / o_arr[length(n_arr)]
-reduce_normaliser <- t_reduce_arr[length(n_arr)] / t_reduce_theoretical_arr[length(n_arr)]
-
-o_fit <- lm(mean_t_table_arr ~ o_arr + 0)
-summary(o_fit)
-
-plot(o_arr,
-     mean_t_table_arr,
-     ylim = range(c(0,mean_t_table_arr + 2*sd_t_table_arr)),
-     # xlim = c(0,25000),
-     pch=19,
-     yaxs="i",
-     xaxs="i",
-     # xaxt="n",
-     xlab="",
-     ylab="",
-     col="black",
-     log = "")
-arrows(o_arr,
-       mean_t_table_arr - sd_t_table_arr,
-       o_arr,
-       mean_t_table_arr + sd_t_table_arr,
-       length=0.05,
-       angle=90,
-       code=3,
-       col="black")
-lines(o_arr,fitted(o_fit))
-
-plot(o_arr,
-     mean_t_table_arr,
-     ylim = range(c(0,mean_t_table_arr + 2*sd_t_table_arr)),
-     # xlim = c(0,25000),
-     pch=19,
-     yaxs="i",
-     xaxs="i",
-     # xaxt="n",
-     xlab="",
-     ylab="",
-     col="black",
-     log = "")
-arrows(o_arr,
-       mean_t_table_arr - sd_t_table_arr,
-       o_arr,
-       mean_t_table_arr + sd_t_table_arr,
-       length=0.05,
-       angle=90,
-       code=3,
-       col="black")
+# 
+# table_normaliser <- t_table_arr[length(n_arr)] / o_arr[length(n_arr)]
+# reduce_normaliser <- t_reduce_arr[length(n_arr)] / t_reduce_theoretical_arr[length(n_arr)]
+# 
+# o_fit <- lm(mean_t_table_arr ~ o_arr + 0)
+# summary(o_fit)
+# 
+# plot(o_arr,
+#      mean_t_table_arr,
+#      ylim = range(c(0,mean_t_table_arr + 2*sd_t_table_arr)),
+#      # xlim = c(0,25000),
+#      pch=19,
+#      yaxs="i",
+#      xaxs="i",
+#      # xaxt="n",
+#      xlab="",
+#      ylab="",
+#      col="black",
+#      log = "")
+# arrows(o_arr,
+#        mean_t_table_arr - sd_t_table_arr,
+#        o_arr,
+#        mean_t_table_arr + sd_t_table_arr,
+#        length=0.05,
+#        angle=90,
+#        code=3,
+#        col="black")
+# lines(o_arr,fitted(o_fit))
+# 
+# plot(o_arr,
+#      mean_t_table_arr,
+#      ylim = range(c(0,mean_t_table_arr + 2*sd_t_table_arr)),
+#      # xlim = c(0,25000),
+#      pch=19,
+#      yaxs="i",
+#      xaxs="i",
+#      # xaxt="n",
+#      xlab="",
+#      ylab="",
+#      col="black",
+#      log = "")
+# arrows(o_arr,
+#        mean_t_table_arr - sd_t_table_arr,
+#        o_arr,
+#        mean_t_table_arr + sd_t_table_arr,
+#        length=0.05,
+#        angle=90,
+#        code=3,
+#        col="black")
 
 ################################################################################
 
@@ -214,6 +214,8 @@ o_total2 <- o_total ^ 2
 o_total_reduce_fit <- lm(mean_t_reduce_total ~ o_total2 + o_total + 0)
 summary(o_total_reduce_fit)
 lines(seq_fitted(o_total_reduce_fit, o_total)[[1]],seq_fitted(o_total_reduce_fit, o_total)[[2]],col="black")
+
+o_sep_reduce_fit <- lm(mean_t)
 
 ####################
 
