@@ -16,9 +16,9 @@ mean_group_size <- function(n){
 k_arr <- 1:10
 n_arr <- 5 * k_arr
 col <- 3
-
-mean_t_reduce_22 <- mean_t_reduce_arr
-sd_t_reduce_22 <- sd_t_reduce_arr
+# 
+# mean_t_reduce_22 <- mean_t_reduce_arr
+# sd_t_reduce_22 <- sd_t_reduce_arr
 
 mean_t_table_arr <- c()
 mean_t_reduce_arr <- c()
@@ -49,7 +49,6 @@ for(n in n_arr){
 
 table_normaliser <- t_table_arr[length(n_arr)] / o_arr[length(n_arr)]
 reduce_normaliser <- t_reduce_arr[length(n_arr)] / t_reduce_theoretical_arr[length(n_arr)]
-
 
 o_fit <- lm(mean_t_table_arr ~ o_arr + 0)
 summary(o_fit)
@@ -84,7 +83,7 @@ summary(o_reduce_fit)
 plot(o_arr,
      mean_t_reduce_arr,
      ylim = range(c(0,mean_t_reduce_arr + 2*sd_t_reduce_arr)),
-     xlim = c(0,25000),
+     # xlim = c(0,25000),
      pch=19,
      yaxs="i",
      xaxs="i",
