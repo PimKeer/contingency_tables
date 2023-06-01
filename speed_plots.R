@@ -219,8 +219,6 @@ o_total_reduce_fit <- lm(mean_t_reduce_total ~ o_total2 + o_total + 0)
 summary(o_total_reduce_fit)
 lines(seq_fitted(o_total_reduce_fit, o_total)[[1]],seq_fitted(o_total_reduce_fit, o_total)[[2]],col="black")
 
-o_sep_reduce_fit <- lm(mean_t)
-
 ####################
 
 o_arr2 <- o_arr ^ 2
@@ -318,6 +316,46 @@ o_total_reduce_fit <- lm(mean_t_reduce_total ~ o_total2 + o_total + 0)
 summary(o_total_reduce_fit)
 lines(seq_fitted(o_total_reduce_fit, o_total)[[1]],seq_fitted(o_total_reduce_fit, o_total)[[2]],col="black")
 dev.off()
+
+
+########### TEST EQUALITY OF MODELS
+
+blu <- length(o_arr)
+red <- length(o_arrA)
+gre <- length(o_arrB)
+
+o_arr_blue <- c(o_arr, rep(0, red+gre))
+o_arr_red <- c(rep(0,blu),o_arrA,rep(0,gre))
+o_arr_green <- c(rep(0,blu+red),o_arrB)
+
+o_arr_blue2 <- o_arr_blue ^ 2
+o_arr_red2 <- o_arr_red ^ 2
+o_arr_green2 <- o_arr_green ^ 2
+
+fit1 <- lm(mean_t_reduce_total ~ o_total + 
+             o_total2 + 
+             o_arr_blue + 
+             o_arr_red + 
+             o_arr_green + 
+             o_arr_blue2 + 
+             o_arr_red2 + 
+             o_arr_green2 + 0)
+
+fit2 <- lm(mean_t_reduce_total ~ o_total + o_total2 + 0)
+
+anova(fit1,fit2)
+
+
+
+
+
+
+
+
+
+
+
+
 # 
 # 
 # n_arr2 <- n_arr ^ 2

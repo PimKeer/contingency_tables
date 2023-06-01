@@ -3,11 +3,11 @@ library(openxlsx)
 
 ## 2x2
 
-# n_row_arr <- list(c(5,5),
-#                   c(10,5), c(10,10),
-#                   c(20,5), c(20,10), c(20,20),
-#                   c(40,5), c(40,10), c(40,20), c(40,40))
-# cols <- 2
+n_row_arr <- list(c(5,5),
+                  c(10,5), c(10,10),
+                  c(20,5), c(20,10), c(20,20),
+                  c(40,5), c(40,10), c(40,20), c(40,40))
+cols <- 2
 
 ## 3x2
 
@@ -22,24 +22,16 @@ library(openxlsx)
 # cols <- 3
 
 ## 2x4
-
-n_row_arr <- list(c(20,10),c(20,20))
-cols <- 3
+# 
+# n_row_arr <- list(c(20,10),c(20,20))
+# cols <- 3
 
 alpha_arr <- c(0.01)
 res <- 100
 theta_seq <- seq(0, 1, length.out = res + 1)
-test_list <- list("asymp",
-                  "fisher",
-                  "boschloo",
-                  "vol_ext",
-                  "ss",
-                  "lp_1_sym",
-                  "lp_1_chisq",
-                  "lp_1_vol_classes",
-                  "lp_3_sym",
-                  "lp_3_chisq",
-                  "lp_3_vol_classes")
+test_list <- list("sym",
+                  "chisq",
+                  "vol_classes")
 
 for(n_row in n_row_arr){
   tables <- gen_tables(n_row, cols)

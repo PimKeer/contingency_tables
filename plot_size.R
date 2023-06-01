@@ -1,4 +1,4 @@
-# source("functions.R")
+source("functions.R")
 library(openxlsx)
 
 # # 3x2
@@ -12,35 +12,21 @@ res <- 100
 
 theta_seq <- seq(0, 1, length.out = res + 1)
 alpha_arr <- c(0.01) #c(0.01,0.05,0.10)
-test_list <- list("asymp",
-                  "fisher",
-                  "sym",
-                  "chisq",
-                  "vol_classes",
-                  "ss",
-                  "boschloo",
-                  "vol_ext")
-# test_list <- list("lp_1_sym",
-# "lp_1_chisq",
-# "lp_1_vol_classes",
-# "lp_3_sym",
-# "lp_3_chisq",
-# "lp_3_vol_classes")
+test_list <- list("sym",
+                  "lp_1_sym",
+                  "lp_1_chisq",
+                  "lp_1_vol_classes",
+                  "lp_3_sym",
+                  "lp_3_chisq",
+                  "lp_3_vol_classes")
 
-name_list <- list("PEARSON",
-                  "FISHER",
-                  "C S_P M",
-                  "C S_chi M",
-                  "C S_V M",
-                  "ET chi",
-                  "ET fisher",
-                  "ET vol")
-# name_list <- list("LP1 S_P",
-#                   "LP1 S_chi",
-#                   "LP1 S_V",
-#                   "LP2 S_P",
-#                   "LP2 S_chi",
-#                   "LP2 S_V")
+name_list <- list("C S_P M",
+                  "LP1 S_P",
+                  "LP1 S_chi",
+                  "LP1 S_V",
+                  "LP2 S_P",
+                  "LP2 S_chi",
+                  "LP2 S_V")
 
 len <- length(test_list)
 
@@ -118,12 +104,12 @@ for(n_row in n_row_arr){
             col = col_array[(i-1)%%length(col_array)+1],
             lty = lty_array[i])
     }
-    legend(x="topright",
-           inset = c(-0.5,0), # 0.52 for not lp, 0.5 for lp
-           legend=c("alpha", unlist(name_list)),
-           col = c("black", col_array[(0:(length(test_list)-1))%%length(col_array)+1]),
-           lty = c(1, lty_array[1:(length(test_list)+1)]),
-           cex = 1.5)
+    # legend(x="topright",
+    #        inset = c(-0.5,0), # 0.52 for not lp, 0.5 for lp
+    #        legend=c("alpha", unlist(name_list)),
+    #        col = c("black", col_array[(0:(length(test_list)-1))%%length(col_array)+1]),
+    #        lty = c(1, lty_array[1:(length(test_list)+1)]),
+    #        cex = 1.5)
     # dev.off()
   }
 }
